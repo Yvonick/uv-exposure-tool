@@ -1,0 +1,556 @@
+'use client';
+
+import { SyntheticEvent, useEffect, useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Check,
+  CloudSun,
+  Info,
+  LoaderCircle,
+  MapPin,
+  Search,
+  ShieldCheck,
+  Sun,
+} from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ReferenceLine,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+
+import { Button } from '@/components/ui/button';
+import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
+import { Input } from '@/components/ui/input';
+
+type Location = {
+  name: string;
+  country: string;
+  admin1?: string;
+  latitude: number;
+  longitude: number;
+  timezone: string;
+};
+
+type CurrentUv = {
+  time: string;
+  uv: number;
+  clearSkyUv: number;
+};
+
+type LiveUvResponse = {
+  current: {
+    time: string;
+    uv_index: number;
+    uv_index_clear_sky: number;
+  };
+};
+
+type GeocodingResponse = {
+  results?: Array<{
+    name: string;
+    country: string;
+    admin1?: string;
+    latitude: number;
+    longitude: number;
+    timezone: string;
+  }>;
+};
+
+type AnnualPoint = {
+  day: number;
+  date: string;
+  base: number;
+  protection: number;
+  start: number | null;
+  end: number | null;
+  maxUv: number;
+};
+
+const DEFAULT_LOCATION: Location = {
+  name: 'Berlin',
+  country: 'Germany',
+  admin1: 'Berlin',
+  latitude: 52.5244,
+  longitude: 13.4105,
+  timezone: 'Europe/Berlin',
+};
+
+const chartConfig = {
+  protection: {
+    label: 'Sun protection recommended',
+    color: '#ff7557',
+  },
+} satisfies ChartConfig;
+
+const monthTicks = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+const months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+function timezoneOffsetMinutes(date: Date, timezone: string) {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).formatToParts(date);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const asUtc = Date.UTC(
+      Number(values.year),
+      Number(values.month) - 1,
+      Number(values.day),
+      Number(values.hour),
+      Number(values.minute),
+    );
+    return (asUtc - date.getTime()) / 60_000;
+  } catch {
+    return 0;
+  }
+}
+
+function buildAnnualData(location: Location, year: number): AnnualPoint[] {
+  const daysInYear = (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86_400_000;
+  const latitude = (location.latitude * Math.PI) / 180;
+  const thresholdUv = 3;
+  const thresholdCosine = Math.pow(thresholdUv / 12.5, 1 / 2.42);
+  const thresholdElevation = Math.asin(thresholdCosine);
+
+  return Array.from({ length: daysInYear }, (_, day) => {
+    const date = new Date(Date.UTC(year, 0, day + 1, 12));
+    const gamma = (2 * Math.PI * day) / daysInYear;
+    const equationOfTime =
+      229.18 *
+      (0.000075 +
+        0.001868 * Math.cos(gamma) -
+        0.032077 * Math.sin(gamma) -
+        0.014615 * Math.cos(2 * gamma) -
+        0.040849 * Math.sin(2 * gamma));
+    const declination =
+      0.006918 -
+      0.399912 * Math.cos(gamma) +
+      0.070257 * Math.sin(gamma) -
+      0.006758 * Math.cos(2 * gamma) +
+      0.000907 * Math.sin(2 * gamma) -
+      0.002697 * Math.cos(3 * gamma) +
+      0.00148 * Math.sin(3 * gamma);
+    const noonCosine = Math.max(
+      0,
+      Math.sin(latitude) * Math.sin(declination) +
+        Math.cos(latitude) * Math.cos(declination),
+    );
+    const maxUv = 12.5 * Math.pow(noonCosine, 2.42);
+    const cosineHourAngle =
+      (Math.sin(thresholdElevation) - Math.sin(latitude) * Math.sin(declination)) /
+      (Math.cos(latitude) * Math.cos(declination));
+    const offset = timezoneOffsetMinutes(date, location.timezone);
+    const solarNoon = (720 - 4 * location.longitude - equationOfTime + offset) / 60;
+
+    let start: number | null = null;
+    let end: number | null = null;
+
+    if (cosineHourAngle <= -1) {
+      start = 0;
+      end = 24;
+    } else if (cosineHourAngle < 1) {
+      const hourAngle = (Math.acos(cosineHourAngle) * 180) / Math.PI;
+      start = Math.max(0, solarNoon - hourAngle / 15);
+      end = Math.min(24, solarNoon + hourAngle / 15);
+    }
+
+    return {
+      day,
+      date: new Intl.DateTimeFormat('en', {
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }).format(date),
+      base: start ?? 0,
+      protection: start === null || end === null ? 0 : end - start,
+      start,
+      end,
+      maxUv,
+    };
+  });
+}
+
+function formatHour(value: number | null) {
+  if (value === null) return 'none';
+  if (value >= 23.99) return '24:00';
+  const hours = Math.floor(value);
+  const minutes = Math.round((value - hours) * 60);
+  const normalizedHours = minutes === 60 ? hours + 1 : hours;
+  const normalizedMinutes = minutes === 60 ? 0 : minutes;
+  return `${String(normalizedHours).padStart(2, '0')}:${String(normalizedMinutes).padStart(2, '0')}`;
+}
+
+function uvBand(uv: number) {
+  if (uv < 3) return { label: 'Low', action: 'Sunscreen usually not needed', tone: 'low' };
+  if (uv < 6) return { label: 'Moderate', action: 'Sun protection recommended', tone: 'moderate' };
+  if (uv < 8) return { label: 'High', action: 'Protection is important', tone: 'high' };
+  if (uv < 11) return { label: 'Very high', action: 'Extra protection needed', tone: 'very-high' };
+  return { label: 'Extreme', action: 'Avoid unprotected exposure', tone: 'extreme' };
+}
+
+async function lookupLocation(query: string): Promise<Location> {
+  const params = new URLSearchParams({ name: query, count: '1', language: 'en', format: 'json' });
+  const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+  if (!response.ok) throw new Error('Location search failed');
+  const data = (await response.json()) as GeocodingResponse;
+  const result = data.results?.[0];
+  if (!result) throw new Error('No matching place found');
+  return {
+    name: result.name,
+    country: result.country,
+    admin1: result.admin1,
+    latitude: result.latitude,
+    longitude: result.longitude,
+    timezone: result.timezone,
+  };
+}
+
+function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: AnnualPoint }> }) {
+  const point = payload?.[0]?.payload;
+  if (!active || !point) return null;
+
+  return (
+    <div className="chart-tooltip">
+      <p className="chart-tooltip-date">{point.date}</p>
+      <p className="chart-tooltip-main">
+        {point.start === null
+          ? 'Low UV all day'
+          : `${formatHour(point.start)}–${formatHour(point.end)} protect`}
+      </p>
+      <p className="chart-tooltip-note">Clear-sky peak · {point.maxUv.toFixed(1)} UVI</p>
+    </div>
+  );
+}
+
+export default function Home() {
+  const [location, setLocation] = useState(DEFAULT_LOCATION);
+  const [query, setQuery] = useState('Berlin, Germany');
+  const [current, setCurrent] = useState<CurrentUv | null>(null);
+  const [loadingLocation, setLoadingLocation] = useState(false);
+  const [loadingUv, setLoadingUv] = useState(true);
+  const [error, setError] = useState('');
+  const year = new Date().getFullYear();
+
+  const annualData = useMemo(() => buildAnnualData(location, year), [location, year]);
+  const peakPoint = useMemo(
+    () => annualData.reduce((peak, point) => (point.maxUv > peak.maxUv ? point : peak)),
+    [annualData],
+  );
+
+  useEffect(() => {
+    const controller = new AbortController();
+    async function loadUv() {
+      setLoadingUv(true);
+      setError('');
+      try {
+        const params = new URLSearchParams({
+          latitude: String(location.latitude),
+          longitude: String(location.longitude),
+          current: 'uv_index,uv_index_clear_sky',
+          timezone: 'auto',
+        });
+        const response = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) throw new Error('UV service unavailable');
+        const data = (await response.json()) as LiveUvResponse;
+        setCurrent({
+          time: data.current.time,
+          uv: data.current.uv_index,
+          clearSkyUv: data.current.uv_index_clear_sky,
+        });
+      } catch (requestError) {
+        if ((requestError as Error).name !== 'AbortError') {
+          setError('Live UV is temporarily unavailable. The annual clear-sky view still works.');
+        }
+      } finally {
+        setLoadingUv(false);
+      }
+    }
+    void loadUv();
+    return () => controller.abort();
+  }, [location]);
+
+  useEffect(() => {
+    const context = document.modelContext;
+    if (!context?.registerTool) return;
+    const lifecycle = new AbortController();
+
+    try {
+      void Promise.resolve(
+        context.registerTool(
+          {
+            name: 'check_uv_for_location',
+            title: 'Check UV for a location',
+            description: 'Find a city or postal code and update the visible Sola UV dashboard and annual clear-sky chart.',
+            inputSchema: {
+              type: 'object',
+              properties: {
+                location: {
+                  type: 'string',
+                  minLength: 2,
+                  description: 'A city, city plus country, or postal code.',
+                },
+              },
+              required: ['location'],
+              additionalProperties: false,
+            },
+            annotations: { readOnlyHint: false, untrustedContentHint: true },
+            async execute(input: unknown) {
+              const candidate = input as { location?: unknown };
+              if (typeof candidate.location !== 'string' || candidate.location.trim().length < 2) {
+                throw new Error('location must be a string with at least two characters');
+              }
+              const nextLocation = await lookupLocation(candidate.location.trim());
+              setLocation(nextLocation);
+              setQuery(`${nextLocation.name}, ${nextLocation.country}`);
+              setError('');
+              return {
+                dashboardUpdated: true,
+                location: nextLocation.name,
+                country: nextLocation.country,
+                timezone: nextLocation.timezone,
+              };
+            },
+          },
+          { signal: lifecycle.signal },
+        ),
+      ).catch(() => undefined);
+    } catch {
+      // WebMCP is optional and feature-detected.
+    }
+
+    return () => lifecycle.abort();
+  }, []);
+
+  async function searchLocation(event: SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) return;
+    setLoadingLocation(true);
+    setError('');
+    try {
+      const nextLocation = await lookupLocation(trimmedQuery);
+      setLocation(nextLocation);
+      setQuery(`${nextLocation.name}, ${nextLocation.country}`);
+    } catch (searchError) {
+      setError(
+        (searchError as Error).message === 'No matching place found'
+          ? 'No matching place found. Try a city plus country or a postal code.'
+          : 'Location search is temporarily unavailable. Please try again.',
+      );
+    } finally {
+      setLoadingLocation(false);
+    }
+  }
+
+  const band = uvBand(current?.uv ?? 0);
+  const cloudReduction = current && current.clearSkyUv > 0
+    ? Math.max(0, Math.round((1 - current.uv / current.clearSkyUv) * 100))
+    : 0;
+
+  return (
+    <main className="app-shell">
+      <header className="site-header">
+        <a className="brand" href="#top" aria-label="Sola home">
+          <span className="brand-mark"><Sun aria-hidden="true" /></span>
+          <span>SOLA</span>
+        </a>
+        <p className="header-note">UV, made legible.</p>
+        <a className="method-link" href="#method">Method <ArrowRight aria-hidden="true" /></a>
+      </header>
+
+      <section className="hero" id="top">
+        <div className="hero-copy">
+          <p className="eyebrow"><span /> Personal sun intelligence</p>
+          <h1>Know when the sun<br /><em>needs your attention.</em></h1>
+          <p className="intro">
+            Live UV for right now, plus a clear-sky view of every low-UV window in the year.
+          </p>
+        </div>
+
+        <form className="location-search" onSubmit={searchLocation}>
+          <label htmlFor="location">Where are you?</label>
+          <div className="search-row">
+            <MapPin className="search-pin" aria-hidden="true" />
+            <Input
+              id="location"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="City or postal code"
+              autoComplete="postal-code"
+              className="location-input"
+            />
+            <Button className="search-button" type="submit" disabled={loadingLocation} aria-label="Find location">
+              {loadingLocation ? <LoaderCircle className="spin" /> : <Search />}
+            </Button>
+          </div>
+          <p className="location-result">
+            <Check aria-hidden="true" /> {location.name}{location.admin1 && location.admin1 !== location.name ? `, ${location.admin1}` : ''} · {location.country}
+          </p>
+        </form>
+      </section>
+
+      {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error}</div>}
+
+      <section className="now-grid" aria-labelledby="now-title">
+        <div className="section-label">
+          <span>01</span>
+          <div><p id="now-title">Right now</p><small>Live conditions</small></div>
+        </div>
+
+        <article className={`uv-orb uv-${band.tone}`}>
+          <div className="orb-rays" aria-hidden="true" />
+          <p className="orb-kicker">UV index</p>
+          {loadingUv ? (
+            <LoaderCircle className="orb-loader spin" aria-label="Loading current UV" />
+          ) : (
+            <p className="uv-number">{current?.uv.toFixed(1) ?? '—'}</p>
+          )}
+          <p className="uv-band">{current ? band.label : 'Unavailable'}</p>
+          <p className="updated">Updated {current?.time.slice(11, 16) ?? '—'} local</p>
+        </article>
+
+        <div className="now-insight">
+          <div className="insight-icon"><ShieldCheck aria-hidden="true" /></div>
+          <p className="insight-overline">The short answer</p>
+          <h2>{current ? band.action : 'Live reading unavailable'}</h2>
+          <p>
+            {current && current.uv < 3
+              ? 'At UV 0–2, general public-health guidance says protection is usually not required for routine time outdoors.'
+              : current
+                ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
+                : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
+          </p>
+          {current && (
+            <div className="condition-note">
+              <CloudSun aria-hidden="true" />
+              <span>
+                Clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
+                {cloudReduction > 0 ? ` · clouds reduce it about ${cloudReduction}% now` : ' · conditions are near clear-sky'}
+              </span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="year-section" aria-labelledby="year-title">
+        <div className="year-heading">
+          <div className="section-label light-label">
+            <span>02</span>
+            <div><p>Plan ahead</p><small>Clear-sky model</small></div>
+          </div>
+          <div className="year-title-group">
+            <p className="eyebrow coral"><span /> {location.name} · {year}</p>
+            <h2 id="year-title">Your low-UV windows,<br /><em>across the year.</em></h2>
+          </div>
+          <div className="peak-stat">
+            <span>Clear-sky peak</span>
+            <strong>{peakPoint.maxUv.toFixed(1)}</strong>
+            <small>around {peakPoint.date}</small>
+          </div>
+        </div>
+
+        <div className="chart-panel">
+          <div className="chart-legend" aria-label="Chart legend">
+            <span><i className="legend-low" /> Low UV · protection usually not needed</span>
+            <span><i className="legend-protect" /> Protect · UVI 3+</span>
+          </div>
+          <div className="chart-scroll">
+            <ChartContainer config={chartConfig} className="annual-chart" initialDimension={{ width: 980, height: 400 }}>
+              <AreaChart data={annualData} margin={{ top: 18, right: 12, bottom: 10, left: 0 }}>
+                <defs>
+                  <linearGradient id="protectFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#ff6248" stopOpacity={0.92} />
+                    <stop offset="100%" stopColor="#ff9f75" stopOpacity={0.7} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="#d9dfda" strokeDasharray="2 6" />
+                <XAxis
+                  dataKey="day"
+                  type="number"
+                  domain={[0, annualData.length - 1]}
+                  ticks={monthTicks}
+                  tickFormatter={(value) => months[monthTicks.indexOf(value)] ?? ''}
+                  axisLine={false}
+                  tickLine={false}
+                  tickMargin={12}
+                />
+                <YAxis
+                  domain={[0, 24]}
+                  ticks={[0, 6, 12, 18, 24]}
+                  tickFormatter={(value) => `${String(value).padStart(2, '0')}:00`}
+                  axisLine={false}
+                  tickLine={false}
+                  width={54}
+                />
+                <ReferenceLine y={12} stroke="#1d2b28" strokeOpacity={0.35} strokeDasharray="4 6" />
+                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#1d2b28', strokeWidth: 1 }} />
+                <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
+                <Area
+                  dataKey="protection"
+                  stackId="uv"
+                  stroke="#ef624b"
+                  strokeWidth={1.5}
+                  fill="url(#protectFill)"
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ChartContainer>
+          </div>
+          <div className="chart-caption">
+            <p>Read vertically: white time before or after the coral band is the day’s modeled low-UV window.</p>
+            <p>Times shown in {location.timezone.replace('_', ' ')}.</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="method-section" id="method">
+        <div className="section-label">
+          <span>03</span>
+          <div><p>Good to know</p><small>Method & limits</small></div>
+        </div>
+        <div className="method-copy">
+          <h2>A useful planning model,<br /><em>not a personal prescription.</em></h2>
+          <p>
+            “Low UV” means below 3. The annual band uses solar position and a published clear-sky UV formula with a fixed 300 DU ozone column. It assumes clean air, low ground reflection and near sea level, so snow, altitude, unusual ozone, medication and skin sensitivity can change your risk.
+          </p>
+        </div>
+        <div className="sources">
+          <p>Sources</p>
+          <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">WHO · UV Index guidance <ArrowRight /></a>
+          <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich · clear-sky formula <ArrowRight /></a>
+          <a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo · live UV data <ArrowRight /></a>
+        </div>
+      </section>
+
+      <footer>
+        <a className="brand footer-brand" href="#top"><span className="brand-mark"><Sun /></span><span>SOLA</span></a>
+        <p>Less guessing. Better timing.</p>
+        <p>Prototype · {year}</p>
+      </footer>
+    </main>
+  );
+}
