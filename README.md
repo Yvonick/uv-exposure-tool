@@ -48,4 +48,4 @@ npm run build
 
 ## Status
 
-This repository contains the local prototype. Deployment with OpenAI Sites is intentionally the next step.
+The prototype is published with OpenAI Sites at [uv-exposure-tool.yvonichou.chatgpt.site](https://uv-exposure-tool.yvonichou.chatgpt.site).
