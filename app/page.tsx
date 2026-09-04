@@ -46,6 +46,7 @@ type CurrentUv = {
   time: string;
   uv: number;
   clearSkyUv: number;
+  isDay: boolean;
   day: DailyUvPoint[];
 };
 
@@ -67,6 +68,12 @@ type LiveUvResponse = {
     time: string[];
     uv_index: Array<number | null>;
     uv_index_clear_sky: Array<number | null>;
+  };
+};
+
+type DaylightResponse = {
+  current?: {
+    is_day?: number;
   };
 };
 
@@ -363,6 +370,7 @@ export default function Home() {
     const controller = new AbortController();
     async function loadUv() {
       setLoadingUv(true);
+      setCurrent(null);
       setError('');
       try {
         const params = new URLSearchParams({
@@ -373,9 +381,27 @@ export default function Home() {
           forecast_days: '1',
           timezone: 'auto',
         });
-        const response = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`, {
-          signal: controller.signal,
+        const daylightParams = new URLSearchParams({
+          latitude: String(location.latitude),
+          longitude: String(location.longitude),
+          current: 'is_day',
+          timezone: 'auto',
         });
+        const [response, daylight] = await Promise.all([
+          fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`, {
+            signal: controller.signal,
+          }),
+          fetch(`https://api.open-meteo.com/v1/forecast?${daylightParams}`, {
+            signal: controller.signal,
+          })
+            .then(async (daylightResponse) => (
+              daylightResponse.ok ? await daylightResponse.json() as DaylightResponse : null
+            ))
+            .catch((daylightError: Error) => {
+              if (daylightError.name === 'AbortError') throw daylightError;
+              return null;
+            }),
+        ]);
         if (!response.ok) throw new Error('UV service unavailable');
         const data = (await response.json()) as LiveUvResponse;
         const currentTime = data.current.time;
@@ -398,6 +424,11 @@ export default function Home() {
           time: currentTime,
           uv: data.current.uv_index,
           clearSkyUv: data.current.uv_index_clear_sky,
+          isDay: daylight?.current?.is_day === 1
+            ? true
+            : daylight?.current?.is_day === 0
+              ? false
+              : data.current.uv_index_clear_sky > 0,
           day,
         });
       } catch (requestError) {
@@ -501,7 +532,9 @@ export default function Home() {
     }
   }
 
-  const band = uvBand(current?.uv ?? 0);
+  const band = current?.isDay === false
+    ? { label: 'Night', action: 'Sun below the horizon', tone: 'night' }
+    : uvBand(current?.uv ?? 0);
   const cloudReduction = current && current.clearSkyUv > 0
     ? Math.max(0, Math.round((1 - current.uv / current.clearSkyUv) * 100))
     : 0;
@@ -518,10 +551,9 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow"><span /> Solar exposure model // live</p>
-          <h1>UV exposure,<br /><em>resolved by location.</em></h1>
+          <h1>UV levels by location.</h1>
           <p className="intro">
-            Measure current conditions. Model every low-UV window in the year.
+            Current conditions and estimated low-UV periods throughout the year.
           </p>
         </div>
 
@@ -595,12 +627,7 @@ export default function Home() {
 
       {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error}</div>}
 
-      <section className="now-grid" aria-labelledby="now-title">
-        <div className="section-label">
-          <span>01</span>
-          <div><p id="now-title">Right now</p><small>Live conditions</small></div>
-        </div>
-
+      <section className="now-grid" aria-label="Live UV conditions">
         <article className={`uv-orb uv-${band.tone}`}>
           <p className="orb-kicker">UV index</p>
           {loadingUv ? (
@@ -615,17 +642,18 @@ export default function Home() {
         <div className="now-insight">
           <div className="now-summary">
             <div>
-              <p className="insight-overline">The short answer</p>
               <h2>{current ? band.action : 'Live reading unavailable'}</h2>
               <p className="insight-copy">
-                {current && current.uv < 3
+                {current && !current.isDay
+                  ? `It is night in ${location.name}. Direct solar UV exposure is not expected until daylight.`
+                  : current && current.uv < 3
                   ? 'At UV 0–2, general public-health guidance says protection is usually not required for routine time outdoors.'
                   : current
                     ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
                     : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
               </p>
             </div>
-            {current && (
+            {current?.isDay && (
               <div className="condition-note">
                 <span>
                   Clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
@@ -683,13 +711,9 @@ export default function Home() {
 
       <section className="year-section" aria-labelledby="year-title">
         <div className="year-heading">
-          <div className="section-label light-label">
-            <span>02</span>
-            <div><p>Plan ahead</p><small>Clear-sky model</small></div>
-          </div>
           <div className="year-title-group">
             <p className="eyebrow coral"><span /> {location.name} · {year}</p>
-            <h2 id="year-title">Your low-UV windows,<br /><em>across the year.</em></h2>
+            <h2 id="year-title">Estimated low-UV windows throughout the year.</h2>
           </div>
           <div className="peak-stat">
             <span>Clear-sky peak</span>
@@ -753,12 +777,8 @@ export default function Home() {
       </section>
 
       <section className="method-section" id="method">
-        <div className="section-label">
-          <span>03</span>
-          <div><p>Good to know</p><small>Method & limits</small></div>
-        </div>
         <div className="method-copy">
-          <h2>A useful planning model,<br /><em>not a personal prescription.</em></h2>
+          <h2>Method and limitations.</h2>
           <p>
             “Low UV” means below 3. The annual band uses solar position and a published clear-sky UV formula with a fixed 300 DU ozone column. It assumes clean air, low ground reflection and near sea level, so snow, altitude, unusual ozone, medication and skin sensitivity can change your risk.
           </p>
@@ -773,8 +793,7 @@ export default function Home() {
 
       <footer>
         <a className="brand footer-brand" href="#top"><span>UV EXPOSURE TOOL</span></a>
-        <p>Exposure intelligence by location.</p>
-        <p>Prototype · {year}</p>
+        <p>Data: Open-Meteo · {year}</p>
       </footer>
     </main>
   );
