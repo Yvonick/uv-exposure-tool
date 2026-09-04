@@ -3,9 +3,10 @@
 UV Exposure Tool answers two practical questions for any location:
 
 - What is the UV index right now?
+- How does UV change across today, from earlier modelled hours through the remaining forecast?
 - At what times of day is the UV index theoretically below 3 through the year, assuming clear-sky conditions?
 
-The prototype uses live UV and geocoding data from [Open-Meteo](https://open-meteo.com/en/docs). Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
+The prototype uses UV forecast data from the CAMS ENSEMBLE through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api), plus Open-Meteo geocoding. Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
 
 ```text
 UVI ≈ 12.5 × cos(solar zenith angle)^2.42 × (ozone / 300 DU)^-1.23
@@ -40,7 +41,7 @@ npm run build
 
 - [WHO: Radiation — the ultraviolet (UV) index](https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index)
 - [Madronich (2007): Analytic formula for the clear-sky UV index](https://pubmed.ncbi.nlm.nih.gov/18028230/)
-- [Open-Meteo Weather Forecast API](https://open-meteo.com/en/docs)
+- [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api)
 - [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api)
 
 ## Status

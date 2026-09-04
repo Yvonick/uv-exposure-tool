@@ -15,6 +15,9 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceArea,
   ReferenceLine,
   Tooltip,
   XAxis,
@@ -38,6 +41,15 @@ type CurrentUv = {
   time: string;
   uv: number;
   clearSkyUv: number;
+  day: DailyUvPoint[];
+};
+
+type DailyUvPoint = {
+  time: string;
+  hour: number;
+  label: string;
+  pastUv: number | null;
+  forecastUv: number | null;
 };
 
 type LiveUvResponse = {
@@ -45,6 +57,11 @@ type LiveUvResponse = {
     time: string;
     uv_index: number;
     uv_index_clear_sky: number;
+  };
+  hourly: {
+    time: string[];
+    uv_index: Array<number | null>;
+    uv_index_clear_sky: Array<number | null>;
   };
 };
 
@@ -81,8 +98,13 @@ const DEFAULT_LOCATION: Location = {
 const chartConfig = {
   protection: {
     label: 'Sun protection recommended',
-    color: '#ff6b4a',
+    color: '#b87563',
   },
+} satisfies ChartConfig;
+
+const todayChartConfig = {
+  pastUv: { label: 'Earlier today', color: '#d9deda' },
+  forecastUv: { label: 'Forecast', color: '#8fa4b2' },
 } satisfies ChartConfig;
 
 const monthTicks = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -243,9 +265,23 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
   );
 }
 
+function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DailyUvPoint }> }) {
+  const point = payload?.[0]?.payload;
+  if (!active || !point) return null;
+  const uv = point.pastUv ?? point.forecastUv;
+
+  return (
+    <div className="chart-tooltip daily-tooltip">
+      <p className="chart-tooltip-date">{point.label}</p>
+      <p className="chart-tooltip-main">UV {uv?.toFixed(1) ?? '—'}</p>
+      <p className="chart-tooltip-note">{point.pastUv !== null ? 'Earlier today' : 'Forecast'}</p>
+    </div>
+  );
+}
+
 export default function Home() {
   const [location, setLocation] = useState(DEFAULT_LOCATION);
-  const [query, setQuery] = useState('Berlin, Germany');
+  const [query, setQuery] = useState('');
   const [current, setCurrent] = useState<CurrentUv | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingUv, setLoadingUv] = useState(true);
@@ -268,6 +304,8 @@ export default function Home() {
           latitude: String(location.latitude),
           longitude: String(location.longitude),
           current: 'uv_index,uv_index_clear_sky',
+          hourly: 'uv_index,uv_index_clear_sky',
+          forecast_days: '1',
           timezone: 'auto',
         });
         const response = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`, {
@@ -275,10 +313,27 @@ export default function Home() {
         });
         if (!response.ok) throw new Error('UV service unavailable');
         const data = (await response.json()) as LiveUvResponse;
+        const currentTime = data.current.time;
+        const currentDate = currentTime.slice(0, 10);
+        const day = data.hourly.time.flatMap((time, index) => {
+          if (!time.startsWith(currentDate)) return [];
+          const uv = data.hourly.uv_index[index];
+          if (uv === null || uv === undefined) return [];
+          const isPast = time <= currentTime;
+          const isForecast = time >= currentTime;
+          return [{
+            time,
+            hour: Number(time.slice(11, 13)),
+            label: time.slice(11, 16),
+            pastUv: isPast ? uv : null,
+            forecastUv: isForecast ? uv : null,
+          }];
+        });
         setCurrent({
-          time: data.current.time,
+          time: currentTime,
           uv: data.current.uv_index,
           clearSkyUv: data.current.uv_index_clear_sky,
+          day,
         });
       } catch (requestError) {
         if ((requestError as Error).name !== 'AbortError') {
@@ -391,14 +446,14 @@ export default function Home() {
         </div>
 
         <form className="location-search" onSubmit={searchLocation}>
-          <label htmlFor="location">Where are you?</label>
+          <label htmlFor="location">Enter a location</label>
           <div className="search-row">
             <MapPin className="search-pin" aria-hidden="true" />
             <Input
               id="location"
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="City or postal code"
+              placeholder="Enter a location"
               autoComplete="postal-code"
               className="location-input"
             />
@@ -433,25 +488,73 @@ export default function Home() {
         </article>
 
         <div className="now-insight">
-          <div className="insight-icon"><ShieldCheck aria-hidden="true" /></div>
-          <p className="insight-overline">The short answer</p>
-          <h2>{current ? band.action : 'Live reading unavailable'}</h2>
-          <p>
-            {current && current.uv < 3
-              ? 'At UV 0–2, general public-health guidance says protection is usually not required for routine time outdoors.'
-              : current
-                ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
-                : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
-          </p>
-          {current && (
-            <div className="condition-note">
-              <CloudSun aria-hidden="true" />
-              <span>
-                Clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
-                {cloudReduction > 0 ? ` · clouds reduce it about ${cloudReduction}% now` : ' · conditions are near clear-sky'}
-              </span>
+          <div className="now-summary">
+            <div className="insight-icon"><ShieldCheck aria-hidden="true" /></div>
+            <div>
+              <p className="insight-overline">The short answer</p>
+              <h2>{current ? band.action : 'Live reading unavailable'}</h2>
+              <p className="insight-copy">
+                {current && current.uv < 3
+                  ? 'At UV 0–2, general public-health guidance says protection is usually not required for routine time outdoors.'
+                  : current
+                    ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
+                    : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
+              </p>
             </div>
-          )}
+            {current && (
+              <div className="condition-note">
+                <CloudSun aria-hidden="true" />
+                <span>
+                  Clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
+                  {cloudReduction > 0 ? ` · clouds reduce it about ${cloudReduction}% now` : ' · conditions are near clear-sky'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="day-chart-panel">
+            <div className="day-chart-header">
+              <div>
+                <p>Today</p>
+                <small>Hourly UV · local time</small>
+              </div>
+              <div className="day-legend" aria-label="Daily chart legend">
+                <span><i className="past-line" /> Earlier</span>
+                <span><i className="forecast-line" /> Forecast</span>
+              </div>
+            </div>
+            {current?.day.length ? (
+              <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 620, height: 220 }}>
+                <LineChart data={current.day} margin={{ top: 18, right: 12, bottom: 4, left: -20 }}>
+                  <CartesianGrid vertical={false} stroke="#313936" strokeDasharray="2 5" />
+                  <ReferenceArea y1={0} y2={3} fill="#8fa4b2" fillOpacity={0.08} />
+                  <XAxis
+                    dataKey="hour"
+                    type="number"
+                    domain={[0, 23]}
+                    ticks={[0, 4, 8, 12, 16, 20, 23]}
+                    tickFormatter={(value) => `${String(value).padStart(2, '0')}:00`}
+                    axisLine={false}
+                    tickLine={false}
+                    tickMargin={10}
+                  />
+                  <YAxis domain={[0, 'auto']} ticks={[0, 3, 6, 9, 12]} axisLine={false} tickLine={false} />
+                  <ReferenceLine
+                    x={Number(current.time.slice(11, 13))}
+                    stroke="#87948e"
+                    strokeDasharray="3 4"
+                    label={{ value: 'NOW', position: 'insideTopRight', fill: '#87948e', fontSize: 9 }}
+                  />
+                  <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#65716c', strokeWidth: 1 }} />
+                  <Line dataKey="pastUv" type="monotone" stroke="#d9deda" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line dataKey="forecastUv" type="monotone" stroke="#8fa4b2" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
+                </LineChart>
+              </ChartContainer>
+            ) : (
+              <div className="day-chart-empty">Hourly data unavailable</div>
+            )}
+            <p className="day-source">Forecast model: CAMS ENSEMBLE via Open-Meteo.</p>
+          </div>
         </div>
       </section>
 
@@ -482,8 +585,8 @@ export default function Home() {
               <AreaChart data={annualData} margin={{ top: 18, right: 12, bottom: 10, left: 0 }}>
                 <defs>
                   <linearGradient id="protectFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ff5e3b" stopOpacity={0.92} />
-                    <stop offset="100%" stopColor="#ff8d64" stopOpacity={0.78} />
+                    <stop offset="0%" stopColor="#ad6858" stopOpacity={0.88} />
+                    <stop offset="100%" stopColor="#c58d7f" stopOpacity={0.72} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid vertical={false} stroke="#33413c" strokeDasharray="2 6" />
@@ -505,13 +608,13 @@ export default function Home() {
                   tickLine={false}
                   width={54}
                 />
-                <ReferenceLine y={12} stroke="#c8ff53" strokeOpacity={0.28} strokeDasharray="4 6" />
-                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#c8ff53', strokeWidth: 1 }} />
+                <ReferenceLine y={12} stroke="#899994" strokeOpacity={0.28} strokeDasharray="4 6" />
+                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#899994', strokeWidth: 1 }} />
                 <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
                 <Area
                   dataKey="protection"
                   stackId="uv"
-                  stroke="#ff6b4a"
+                  stroke="#b87563"
                   strokeWidth={1.5}
                   fill="url(#protectFill)"
                   isAnimationActive={false}
@@ -541,7 +644,7 @@ export default function Home() {
           <p>Sources</p>
           <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">WHO · UV Index guidance <ArrowRight /></a>
           <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich · clear-sky formula <ArrowRight /></a>
-          <a href="https://open-meteo.com/en/docs" target="_blank" rel="noreferrer">Open-Meteo · live UV data <ArrowRight /></a>
+          <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS / Open-Meteo · UV data <ArrowRight /></a>
         </div>
       </section>
 
