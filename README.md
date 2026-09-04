@@ -1,6 +1,6 @@
-# Sola UV
+# UV Window
 
-Sola answers two practical questions for any location:
+UV Window answers two practical questions for any location:
 
 - What is the UV index right now?
 - At what times of day is the UV index theoretically below 3 through the year, assuming clear-sky conditions?
@@ -15,7 +15,7 @@ The model currently holds ozone at 300 DU and assumes cloud-free, unpolluted con
 
 ## Why the threshold is 3
 
-The [World Health Organization](https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index) recommends sun protection when the UV Index is 3 or above. Sola therefore calls UVI below 3 a “low-UV window” and avoids presenting it as zero risk.
+The [World Health Organization](https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index) recommends sun protection when the UV Index is 3 or above. UV Window therefore calls UVI below 3 a “low-UV window” and avoids presenting it as zero risk.
 
 Individual sensitivity, medications, altitude, snow, water, and unusual ozone conditions can change risk. When UV is 3 or above, WHO guidance recommends using multiple forms of protection rather than sunscreen alone.
 

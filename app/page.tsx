@@ -10,7 +10,6 @@ import {
   MapPin,
   Search,
   ShieldCheck,
-  Sun,
 } from 'lucide-react';
 import {
   Area,
@@ -82,7 +81,7 @@ const DEFAULT_LOCATION: Location = {
 const chartConfig = {
   protection: {
     label: 'Sun protection recommended',
-    color: '#ff7557',
+    color: '#ff6b4a',
   },
 } satisfies ChartConfig;
 
@@ -304,7 +303,7 @@ export default function Home() {
           {
             name: 'check_uv_for_location',
             title: 'Check UV for a location',
-            description: 'Find a city or postal code and update the visible Sola UV dashboard and annual clear-sky chart.',
+            description: 'Find a city or postal code and update the visible UV Window dashboard and annual clear-sky chart.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -374,9 +373,9 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="Sola home">
-          <span className="brand-mark"><Sun aria-hidden="true" /></span>
-          <span>SOLA</span>
+        <a className="brand" href="#top" aria-label="UV Window home">
+          <span className="brand-mark" aria-hidden="true">UV</span>
+          <span>UV//WINDOW</span>
         </a>
         <p className="header-note">UV, made legible.</p>
         <a className="method-link" href="#method">Method <ArrowRight aria-hidden="true" /></a>
@@ -384,10 +383,10 @@ export default function Home() {
 
       <section className="hero" id="top">
         <div className="hero-copy">
-          <p className="eyebrow"><span /> Personal sun intelligence</p>
-          <h1>Know when the sun<br /><em>needs your attention.</em></h1>
+          <p className="eyebrow"><span /> Solar exposure model // live</p>
+          <h1>UV exposure,<br /><em>resolved by location.</em></h1>
           <p className="intro">
-            Live UV for right now, plus a clear-sky view of every low-UV window in the year.
+            Measure current conditions. Model every low-UV window in the year.
           </p>
         </div>
 
@@ -483,11 +482,11 @@ export default function Home() {
               <AreaChart data={annualData} margin={{ top: 18, right: 12, bottom: 10, left: 0 }}>
                 <defs>
                   <linearGradient id="protectFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ff6248" stopOpacity={0.92} />
-                    <stop offset="100%" stopColor="#ff9f75" stopOpacity={0.7} />
+                    <stop offset="0%" stopColor="#ff5e3b" stopOpacity={0.92} />
+                    <stop offset="100%" stopColor="#ff8d64" stopOpacity={0.78} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} stroke="#d9dfda" strokeDasharray="2 6" />
+                <CartesianGrid vertical={false} stroke="#33413c" strokeDasharray="2 6" />
                 <XAxis
                   dataKey="day"
                   type="number"
@@ -506,13 +505,13 @@ export default function Home() {
                   tickLine={false}
                   width={54}
                 />
-                <ReferenceLine y={12} stroke="#1d2b28" strokeOpacity={0.35} strokeDasharray="4 6" />
-                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#1d2b28', strokeWidth: 1 }} />
+                <ReferenceLine y={12} stroke="#c8ff53" strokeOpacity={0.28} strokeDasharray="4 6" />
+                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#c8ff53', strokeWidth: 1 }} />
                 <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
                 <Area
                   dataKey="protection"
                   stackId="uv"
-                  stroke="#ef624b"
+                  stroke="#ff6b4a"
                   strokeWidth={1.5}
                   fill="url(#protectFill)"
                   isAnimationActive={false}
@@ -547,8 +546,8 @@ export default function Home() {
       </section>
 
       <footer>
-        <a className="brand footer-brand" href="#top"><span className="brand-mark"><Sun /></span><span>SOLA</span></a>
-        <p>Less guessing. Better timing.</p>
+        <a className="brand footer-brand" href="#top"><span className="brand-mark" aria-hidden="true">UV</span><span>UV//WINDOW</span></a>
+        <p>Exposure intelligence by location.</p>
         <p>Prototype · {year}</p>
       </footer>
     </main>
