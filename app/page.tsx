@@ -4,12 +4,10 @@ import { SyntheticEvent, useEffect, useMemo, useState } from 'react';
 import {
   ArrowRight,
   Check,
-  CloudSun,
   Info,
   LoaderCircle,
   MapPin,
   Search,
-  ShieldCheck,
 } from 'lucide-react';
 import {
   Area,
@@ -26,7 +24,14 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
-import { Input } from '@/components/ui/input';
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from '@/components/ui/combobox';
 
 type Location = {
   name: string;
@@ -98,13 +103,13 @@ const DEFAULT_LOCATION: Location = {
 const chartConfig = {
   protection: {
     label: 'Sun protection recommended',
-    color: '#b87563',
+    color: '#8dac9e',
   },
 } satisfies ChartConfig;
 
 const todayChartConfig = {
-  pastUv: { label: 'Earlier today', color: '#d9deda' },
-  forecastUv: { label: 'Forecast', color: '#8fa4b2' },
+  pastUv: { label: 'Earlier today', color: '#111111' },
+  forecastUv: { label: 'Forecast', color: '#226047' },
 } satisfies ChartConfig;
 
 const monthTicks = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -231,21 +236,47 @@ function uvBand(uv: number) {
   return { label: 'Extreme', action: 'Avoid unprotected exposure', tone: 'extreme' };
 }
 
-async function lookupLocation(query: string): Promise<Location> {
-  const params = new URLSearchParams({ name: query, count: '1', language: 'en', format: 'json' });
-  const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`);
+function formatLocationLabel(location: Location) {
+  return [
+    location.name,
+    location.admin1 && location.admin1 !== location.name ? location.admin1 : null,
+    location.country,
+  ].filter(Boolean).join(', ');
+}
+
+async function lookupLocations(query: string, count = 6, signal?: AbortSignal): Promise<Location[]> {
+  const params = new URLSearchParams({ name: query, count: String(count), language: 'en', format: 'json' });
+  const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal });
   if (!response.ok) throw new Error('Location search failed');
   const data = (await response.json()) as GeocodingResponse;
-  const result = data.results?.[0];
+  return (data.results ?? []).map((result) => ({
+      name: result.name,
+      country: result.country,
+      admin1: result.admin1,
+      latitude: result.latitude,
+      longitude: result.longitude,
+      timezone: result.timezone,
+    }));
+}
+
+async function lookupLocation(query: string): Promise<Location> {
+  const [result] = await lookupLocations(query, 1);
   if (!result) throw new Error('No matching place found');
-  return {
-    name: result.name,
-    country: result.country,
-    admin1: result.admin1,
-    latitude: result.latitude,
-    longitude: result.longitude,
-    timezone: result.timezone,
-  };
+  return result;
+}
+
+function formatLocalTime(timezone: string) {
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      timeZone: timezone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date());
+  } catch {
+    return '--:--:--';
+  }
 }
 
 function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: AnnualPoint }> }) {
@@ -282,6 +313,9 @@ function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 export default function Home() {
   const [location, setLocation] = useState(DEFAULT_LOCATION);
   const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<Location[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const [localTime, setLocalTime] = useState('--:--:--');
   const [current, setCurrent] = useState<CurrentUv | null>(null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingUv, setLoadingUv] = useState(true);
@@ -293,6 +327,37 @@ export default function Home() {
     () => annualData.reduce((peak, point) => (point.maxUv > peak.maxUv ? point : peak)),
     [annualData],
   );
+
+  useEffect(() => {
+    const updateClock = () => setLocalTime(formatLocalTime(location.timezone));
+    updateClock();
+    const interval = window.setInterval(updateClock, 1_000);
+    return () => window.clearInterval(interval);
+  }, [location.timezone]);
+
+  useEffect(() => {
+    const candidate = query.trim();
+    if (candidate.length < 2 || candidate === formatLocationLabel(location)) {
+      return;
+    }
+
+    const controller = new AbortController();
+    const debounce = window.setTimeout(async () => {
+      try {
+        const matches = await lookupLocations(candidate, 6, controller.signal);
+        setSuggestions(matches);
+      } catch (suggestionError) {
+        if ((suggestionError as Error).name !== 'AbortError') setSuggestions([]);
+      } finally {
+        if (!controller.signal.aborted) setLoadingSuggestions(false);
+      }
+    }, 280);
+
+    return () => {
+      window.clearTimeout(debounce);
+      controller.abort();
+    };
+  }, [query, location]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -379,7 +444,9 @@ export default function Home() {
               }
               const nextLocation = await lookupLocation(candidate.location.trim());
               setLocation(nextLocation);
-              setQuery(`${nextLocation.name}, ${nextLocation.country}`);
+              setQuery(formatLocationLabel(nextLocation));
+              setSuggestions([]);
+              setLoadingSuggestions(false);
               setError('');
               return {
                 dashboardUpdated: true,
@@ -399,6 +466,21 @@ export default function Home() {
     return () => lifecycle.abort();
   }, []);
 
+  function updateLocationQuery(value: string) {
+    const candidate = value.trim();
+    setQuery(value);
+    setSuggestions([]);
+    setLoadingSuggestions(candidate.length >= 2 && candidate !== formatLocationLabel(location));
+  }
+
+  function chooseLocation(nextLocation: Location) {
+    setLocation(nextLocation);
+    setQuery(formatLocationLabel(nextLocation));
+    setSuggestions([]);
+    setLoadingSuggestions(false);
+    setError('');
+  }
+
   async function searchLocation(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
     const trimmedQuery = query.trim();
@@ -407,8 +489,7 @@ export default function Home() {
     setError('');
     try {
       const nextLocation = await lookupLocation(trimmedQuery);
-      setLocation(nextLocation);
-      setQuery(`${nextLocation.name}, ${nextLocation.country}`);
+      chooseLocation(nextLocation);
     } catch (searchError) {
       setError(
         (searchError as Error).message === 'No matching place found'
@@ -429,10 +510,9 @@ export default function Home() {
     <main className="app-shell">
       <header className="site-header">
         <a className="brand" href="#top" aria-label="UV Exposure Tool home">
-          <span className="brand-mark" aria-hidden="true">UV</span>
           <span>UV EXPOSURE TOOL</span>
         </a>
-        <p className="header-note">UV, made legible.</p>
+        <p className="header-note">Current + clear-sky model</p>
         <a className="method-link" href="#method">Method <ArrowRight aria-hidden="true" /></a>
       </header>
 
@@ -446,24 +526,70 @@ export default function Home() {
         </div>
 
         <form className="location-search" onSubmit={searchLocation}>
-          <label htmlFor="location">Enter a location</label>
+          <label htmlFor="location-search">Enter a location</label>
           <div className="search-row">
             <MapPin className="search-pin" aria-hidden="true" />
-            <Input
-              id="location"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Enter a location"
-              autoComplete="postal-code"
-              className="location-input"
-            />
+            <Combobox
+              items={suggestions}
+              filteredItems={suggestions}
+              value={location}
+              inputValue={query}
+              onInputValueChange={updateLocationQuery}
+              onValueChange={(nextLocation) => {
+                if (nextLocation) chooseLocation(nextLocation);
+              }}
+              itemToStringLabel={formatLocationLabel}
+              isItemEqualToValue={(a, b) => a.latitude === b.latitude && a.longitude === b.longitude}
+              autoHighlight
+              filter={null}
+            >
+              <ComboboxInput
+                id="location-search"
+                className="location-input"
+                placeholder="Enter a location"
+                autoComplete="off"
+                showTrigger={false}
+                aria-label="Enter a location"
+                aria-busy={loadingSuggestions}
+              />
+              <ComboboxContent className="location-suggestions">
+                <ComboboxEmpty className="location-suggestion-status">
+                  {loadingSuggestions
+                    ? 'Searching locations…'
+                    : query.trim().length < 2
+                      ? 'Type at least two characters'
+                      : 'No matching locations'}
+                </ComboboxEmpty>
+                <ComboboxList>
+                  {suggestions.map((suggestion, index) => (
+                    <ComboboxItem
+                      key={`${suggestion.latitude}-${suggestion.longitude}-${suggestion.name}`}
+                      value={suggestion}
+                      index={index}
+                      className="location-option"
+                    >
+                      <MapPin aria-hidden="true" />
+                      <span>
+                        <strong>{suggestion.name}</strong>
+                        <small>
+                          {[suggestion.admin1, suggestion.country].filter(Boolean).join(', ')}
+                        </small>
+                      </span>
+                    </ComboboxItem>
+                  ))}
+                </ComboboxList>
+              </ComboboxContent>
+            </Combobox>
             <Button className="search-button" type="submit" disabled={loadingLocation} aria-label="Find location">
               {loadingLocation ? <LoaderCircle className="spin" /> : <Search />}
             </Button>
           </div>
-          <p className="location-result">
-            <Check aria-hidden="true" /> {location.name}{location.admin1 && location.admin1 !== location.name ? `, ${location.admin1}` : ''} · {location.country}
-          </p>
+          <div className="location-meta">
+            <p className="location-result">
+              <Check aria-hidden="true" /> {formatLocationLabel(location)}
+            </p>
+            <p className="location-clock"><span>Local time</span><time>{localTime}</time></p>
+          </div>
         </form>
       </section>
 
@@ -476,7 +602,6 @@ export default function Home() {
         </div>
 
         <article className={`uv-orb uv-${band.tone}`}>
-          <div className="orb-rays" aria-hidden="true" />
           <p className="orb-kicker">UV index</p>
           {loadingUv ? (
             <LoaderCircle className="orb-loader spin" aria-label="Loading current UV" />
@@ -484,12 +609,11 @@ export default function Home() {
             <p className="uv-number">{current?.uv.toFixed(1) ?? '—'}</p>
           )}
           <p className="uv-band">{current ? band.label : 'Unavailable'}</p>
-          <p className="updated">Updated {current?.time.slice(11, 16) ?? '—'} local</p>
+          <p className="updated">Data at {current?.time.slice(11, 16) ?? '—'} · local time {localTime}</p>
         </article>
 
         <div className="now-insight">
           <div className="now-summary">
-            <div className="insight-icon"><ShieldCheck aria-hidden="true" /></div>
             <div>
               <p className="insight-overline">The short answer</p>
               <h2>{current ? band.action : 'Live reading unavailable'}</h2>
@@ -503,7 +627,6 @@ export default function Home() {
             </div>
             {current && (
               <div className="condition-note">
-                <CloudSun aria-hidden="true" />
                 <span>
                   Clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
                   {cloudReduction > 0 ? ` · clouds reduce it about ${cloudReduction}% now` : ' · conditions are near clear-sky'}
@@ -526,8 +649,8 @@ export default function Home() {
             {current?.day.length ? (
               <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 620, height: 220 }}>
                 <LineChart data={current.day} margin={{ top: 18, right: 12, bottom: 4, left: -20 }}>
-                  <CartesianGrid vertical={false} stroke="#313936" strokeDasharray="2 5" />
-                  <ReferenceArea y1={0} y2={3} fill="#8fa4b2" fillOpacity={0.08} />
+                  <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
+                  <ReferenceArea y1={0} y2={3} fill="#226047" fillOpacity={0.06} />
                   <XAxis
                     dataKey="hour"
                     type="number"
@@ -541,13 +664,13 @@ export default function Home() {
                   <YAxis domain={[0, 'auto']} ticks={[0, 3, 6, 9, 12]} axisLine={false} tickLine={false} />
                   <ReferenceLine
                     x={Number(current.time.slice(11, 13))}
-                    stroke="#87948e"
+                    stroke="#226047"
                     strokeDasharray="3 4"
-                    label={{ value: 'NOW', position: 'insideTopRight', fill: '#87948e', fontSize: 9 }}
+                    label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />
-                  <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#65716c', strokeWidth: 1 }} />
-                  <Line dataKey="pastUv" type="monotone" stroke="#d9deda" strokeWidth={2} dot={false} isAnimationActive={false} />
-                  <Line dataKey="forecastUv" type="monotone" stroke="#8fa4b2" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
+                  <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#9b9b9b', strokeWidth: 1 }} />
+                  <Line dataKey="pastUv" type="monotone" stroke="#111111" strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line dataKey="forecastUv" type="monotone" stroke="#226047" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
                 </LineChart>
               </ChartContainer>
             ) : (
@@ -585,11 +708,11 @@ export default function Home() {
               <AreaChart data={annualData} margin={{ top: 18, right: 12, bottom: 10, left: 0 }}>
                 <defs>
                   <linearGradient id="protectFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ad6858" stopOpacity={0.88} />
-                    <stop offset="100%" stopColor="#c58d7f" stopOpacity={0.72} />
+                    <stop offset="0%" stopColor="#89aa9a" stopOpacity={0.9} />
+                    <stop offset="100%" stopColor="#b5c9bf" stopOpacity={0.78} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid vertical={false} stroke="#33413c" strokeDasharray="2 6" />
+                <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 6" />
                 <XAxis
                   dataKey="day"
                   type="number"
@@ -608,13 +731,13 @@ export default function Home() {
                   tickLine={false}
                   width={54}
                 />
-                <ReferenceLine y={12} stroke="#899994" strokeOpacity={0.28} strokeDasharray="4 6" />
-                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#899994', strokeWidth: 1 }} />
+                <ReferenceLine y={12} stroke="#226047" strokeOpacity={0.28} strokeDasharray="4 6" />
+                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#226047', strokeWidth: 1 }} />
                 <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
                 <Area
                   dataKey="protection"
                   stackId="uv"
-                  stroke="#b87563"
+                  stroke="#47715f"
                   strokeWidth={1.5}
                   fill="url(#protectFill)"
                   isAnimationActive={false}
@@ -623,7 +746,7 @@ export default function Home() {
             </ChartContainer>
           </div>
           <div className="chart-caption">
-            <p>Read vertically: white time before or after the coral band is the day’s modeled low-UV window.</p>
+            <p>Read vertically: white time before or after the green band is the day’s modeled low-UV window.</p>
             <p>Times shown in {location.timezone.replace('_', ' ')}.</p>
           </div>
         </div>
@@ -649,7 +772,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <a className="brand footer-brand" href="#top"><span className="brand-mark" aria-hidden="true">UV</span><span>UV EXPOSURE TOOL</span></a>
+        <a className="brand footer-brand" href="#top"><span>UV EXPOSURE TOOL</span></a>
         <p>Exposure intelligence by location.</p>
         <p>Prototype · {year}</p>
       </footer>

@@ -6,6 +6,8 @@ UV Exposure Tool answers two practical questions for any location:
 - How does UV change across today, from earlier modelled hours through the remaining forecast?
 - At what times of day is the UV index theoretically below 3 through the year, assuming clear-sky conditions?
 
+Location search provides live place suggestions, and the selected location’s clock updates in 24-hour time.
+
 The prototype uses UV forecast data from the CAMS ENSEMBLE through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api), plus Open-Meteo geocoding. Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
 
 ```text
