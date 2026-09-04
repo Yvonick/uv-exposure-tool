@@ -303,7 +303,7 @@ export default function Home() {
           {
             name: 'check_uv_for_location',
             title: 'Check UV for a location',
-            description: 'Find a city or postal code and update the visible UV Window dashboard and annual clear-sky chart.',
+            description: 'Find a city or postal code and update the visible UV Exposure Tool dashboard and annual clear-sky chart.',
             inputSchema: {
               type: 'object',
               properties: {
@@ -373,9 +373,9 @@ export default function Home() {
   return (
     <main className="app-shell">
       <header className="site-header">
-        <a className="brand" href="#top" aria-label="UV Window home">
+        <a className="brand" href="#top" aria-label="UV Exposure Tool home">
           <span className="brand-mark" aria-hidden="true">UV</span>
-          <span>UV//WINDOW</span>
+          <span>UV EXPOSURE TOOL</span>
         </a>
         <p className="header-note">UV, made legible.</p>
         <a className="method-link" href="#method">Method <ArrowRight aria-hidden="true" /></a>
@@ -546,7 +546,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <a className="brand footer-brand" href="#top"><span className="brand-mark" aria-hidden="true">UV</span><span>UV//WINDOW</span></a>
+        <a className="brand footer-brand" href="#top"><span className="brand-mark" aria-hidden="true">UV</span><span>UV EXPOSURE TOOL</span></a>
         <p>Exposure intelligence by location.</p>
         <p>Prototype · {year}</p>
       </footer>
