@@ -16,6 +16,7 @@ import {
   Line,
   LineChart,
   ReferenceArea,
+  ReferenceDot,
   ReferenceLine,
   Tooltip,
   XAxis,
@@ -56,6 +57,8 @@ type DailyUvPoint = {
   label: string;
   pastUv: number | null;
   forecastUv: number | null;
+  clearSkyUv: number | null;
+  isCurrent: boolean;
 };
 
 type LiveUvResponse = {
@@ -116,7 +119,8 @@ const chartConfig = {
 
 const todayChartConfig = {
   pastUv: { label: 'Earlier today', color: '#111111' },
-  forecastUv: { label: 'Forecast', color: '#226047' },
+  forecastUv: { label: 'Forecast with clouds', color: '#777777' },
+  clearSkyUv: { label: 'Clear-sky potential', color: '#226047' },
 } satisfies ChartConfig;
 
 const monthTicks = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -286,6 +290,53 @@ function formatLocalTime(timezone: string) {
   }
 }
 
+function decimalHour(time: string) {
+  const [hours = '0', minutes = '0'] = time.slice(11, 16).split(':');
+  return Number(hours) + Number(minutes) / 60;
+}
+
+function localCalendarDate(timezone: string) {
+  const now = new Date();
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: 'numeric',
+      day: 'numeric',
+    }).formatToParts(now);
+    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+    const year = Number(values.year);
+    const month = Number(values.month);
+    const day = Number(values.day);
+    return {
+      year,
+      dayIndex: Math.round((Date.UTC(year, month - 1, day) - Date.UTC(year, 0, 1)) / 86_400_000),
+    };
+  } catch {
+    const year = now.getFullYear();
+    return {
+      year,
+      dayIndex: Math.round((Date.UTC(year, now.getMonth(), now.getDate()) - Date.UTC(year, 0, 1)) / 86_400_000),
+    };
+  }
+}
+
+function dailyUvScale(points: DailyUvPoint[]) {
+  const maximum = points.reduce((highest, point) => Math.max(
+    highest,
+    point.pastUv ?? 0,
+    point.forecastUv ?? 0,
+    point.clearSkyUv ?? 0,
+  ), 0);
+  const roughMaximum = Math.max(3, Math.ceil(maximum * 1.08));
+  const step = roughMaximum <= 5 ? 1 : roughMaximum <= 10 ? 2 : 3;
+  const upper = Math.ceil(roughMaximum / step) * step;
+  return {
+    upper,
+    ticks: Array.from({ length: upper / step + 1 }, (_, index) => index * step),
+  };
+}
+
 function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: AnnualPoint }> }) {
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
@@ -311,8 +362,11 @@ function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   return (
     <div className="chart-tooltip daily-tooltip">
       <p className="chart-tooltip-date">{point.label}</p>
-      <p className="chart-tooltip-main">UV {uv?.toFixed(1) ?? '—'}</p>
-      <p className="chart-tooltip-note">{point.pastUv !== null ? 'Earlier today' : 'Forecast'}</p>
+      <p className="chart-tooltip-main">Cloud-adjusted · {uv?.toFixed(1) ?? '—'} UVI</p>
+      <p className="chart-tooltip-note">Clear-sky potential · {point.clearSkyUv?.toFixed(1) ?? '—'} UVI</p>
+      <p className="chart-tooltip-note">
+        {point.isCurrent ? 'Current estimate' : point.pastUv !== null ? 'Earlier hourly estimate' : 'Hourly forecast'}
+      </p>
     </div>
   );
 }
@@ -327,13 +381,27 @@ export default function Home() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingUv, setLoadingUv] = useState(true);
   const [error, setError] = useState('');
-  const year = new Date().getFullYear();
+  const calendarDate = localCalendarDate(location.timezone);
+  const year = calendarDate.year;
 
   const annualData = useMemo(() => buildAnnualData(location, year), [location, year]);
   const peakPoint = useMemo(
     () => annualData.reduce((peak, point) => (point.maxUv > peak.maxUv ? point : peak)),
     [annualData],
   );
+  const lowSeasonEnd = useMemo(
+    () => annualData.find((point, index) => (
+      index > 0 && annualData[index - 1].start === null && point.start !== null
+    )) ?? null,
+    [annualData],
+  );
+  const lowSeasonStart = useMemo(
+    () => annualData.find((point, index) => (
+      index > 0 && annualData[index - 1].start !== null && point.start === null
+    )) ?? null,
+    [annualData],
+  );
+  const currentAnnualPoint = annualData[calendarDate.dayIndex] ?? null;
 
   useEffect(() => {
     const updateClock = () => setLocalTime(formatLocalTime(location.timezone));
@@ -368,9 +436,11 @@ export default function Home() {
 
   useEffect(() => {
     const controller = new AbortController();
-    async function loadUv() {
-      setLoadingUv(true);
-      setCurrent(null);
+    async function loadUv(showLoader: boolean) {
+      if (showLoader) {
+        setLoadingUv(true);
+        setCurrent(null);
+      }
       setError('');
       try {
         const params = new URLSearchParams({
@@ -406,20 +476,34 @@ export default function Home() {
         const data = (await response.json()) as LiveUvResponse;
         const currentTime = data.current.time;
         const currentDate = currentTime.slice(0, 10);
+        const currentHour = decimalHour(currentTime);
         const day = data.hourly.time.flatMap((time, index) => {
           if (!time.startsWith(currentDate)) return [];
           const uv = data.hourly.uv_index[index];
-          if (uv === null || uv === undefined) return [];
-          const isPast = time <= currentTime;
-          const isForecast = time >= currentTime;
+          const clearSkyUv = data.hourly.uv_index_clear_sky[index];
+          if ((uv === null || uv === undefined) && (clearSkyUv === null || clearSkyUv === undefined)) return [];
+          if (time === currentTime) return [];
+          const isPast = time < currentTime;
           return [{
             time,
-            hour: Number(time.slice(11, 13)),
+            hour: decimalHour(time),
             label: time.slice(11, 16),
-            pastUv: isPast ? uv : null,
-            forecastUv: isForecast ? uv : null,
+            pastUv: isPast ? (uv ?? null) : null,
+            forecastUv: isPast ? null : (uv ?? null),
+            clearSkyUv: clearSkyUv ?? null,
+            isCurrent: false,
           }];
         });
+        day.push({
+          time: currentTime,
+          hour: currentHour,
+          label: currentTime.slice(11, 16),
+          pastUv: data.current.uv_index,
+          forecastUv: data.current.uv_index,
+          clearSkyUv: data.current.uv_index_clear_sky,
+          isCurrent: true,
+        });
+        day.sort((a, b) => a.hour - b.hour);
         setCurrent({
           time: currentTime,
           uv: data.current.uv_index,
@@ -436,11 +520,15 @@ export default function Home() {
           setError('Live UV is temporarily unavailable. The annual clear-sky view still works.');
         }
       } finally {
-        setLoadingUv(false);
+        if (showLoader) setLoadingUv(false);
       }
     }
-    void loadUv();
-    return () => controller.abort();
+    void loadUv(true);
+    const refreshInterval = window.setInterval(() => void loadUv(false), 15 * 60 * 1_000);
+    return () => {
+      window.clearInterval(refreshInterval);
+      controller.abort();
+    };
   }, [location]);
 
   useEffect(() => {
@@ -532,12 +620,14 @@ export default function Home() {
     }
   }
 
-  const band = current?.isDay === false
+  const currentBand = current?.isDay === false
     ? { label: 'Night', action: 'Sun below the horizon', tone: 'night' }
     : uvBand(current?.uv ?? 0);
-  const cloudReduction = current && current.clearSkyUv > 0
-    ? Math.max(0, Math.round((1 - current.uv / current.clearSkyUv) * 100))
-    : 0;
+  const guidanceBand = current?.isDay === false
+    ? currentBand
+    : uvBand(Math.max(current?.uv ?? 0, current?.clearSkyUv ?? 0));
+  const todayScale = dailyUvScale(current?.day ?? []);
+  const currentHour = current ? decimalHour(current.time) : 0;
 
   return (
     <main className="app-shell">
@@ -628,36 +718,35 @@ export default function Home() {
       {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error}</div>}
 
       <section className="now-grid" aria-label="Live UV conditions">
-        <article className={`uv-orb uv-${band.tone}`}>
-          <p className="orb-kicker">UV index</p>
+        <article className={`uv-orb uv-${currentBand.tone}`}>
+          <p className="orb-kicker">Current UV estimate</p>
           {loadingUv ? (
             <LoaderCircle className="orb-loader spin" aria-label="Loading current UV" />
           ) : (
             <p className="uv-number">{current?.uv.toFixed(1) ?? '—'}</p>
           )}
-          <p className="uv-band">{current ? band.label : 'Unavailable'}</p>
+          <p className="uv-band">{current ? currentBand.label : 'Unavailable'}</p>
           <p className="updated">Data at {current?.time.slice(11, 16) ?? '—'} · local time {localTime}</p>
         </article>
 
         <div className="now-insight">
           <div className="now-summary">
             <div>
-              <h2>{current ? band.action : 'Live reading unavailable'}</h2>
+              <h2>{current ? guidanceBand.action : 'Current estimate unavailable'}</h2>
               <p className="insight-copy">
                 {current && !current.isDay
                   ? `It is night in ${location.name}. Direct solar UV exposure is not expected until daylight.`
-                  : current && current.uv < 3
-                  ? 'At UV 0–2, general public-health guidance says protection is usually not required for routine time outdoors.'
+                  : current && Math.max(current.uv, current.clearSkyUv) < 3
+                  ? 'Current and clear-sky UV are both below 3, where protection is usually not required for routine time outdoors.'
                   : current
-                    ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
+                    ? 'The clear-sky potential is 3 or higher. Plan for protection even when the current cloud-adjusted estimate is lower.'
                     : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
               </p>
             </div>
             {current?.isDay && (
               <div className="condition-note">
                 <span>
-                  Clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
-                  {cloudReduction > 0 ? ` · clouds reduce it about ${cloudReduction}% now` : ' · conditions are near clear-sky'}
+                  Modeled clouds <strong>{current.uv.toFixed(1)}</strong> · clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
                 </span>
               </div>
             )}
@@ -667,11 +756,12 @@ export default function Home() {
             <div className="day-chart-header">
               <div>
                 <p>Today</p>
-                <small>Hourly UV · local time</small>
+                <small>Model estimates · local time</small>
               </div>
               <div className="day-legend" aria-label="Daily chart legend">
                 <span><i className="past-line" /> Earlier</span>
-                <span><i className="forecast-line" /> Forecast</span>
+                <span><i className="forecast-line" /> Forecast with clouds</span>
+                <span><i className="potential-line" /> Clear-sky potential</span>
               </div>
             </div>
             {current?.day.length ? (
@@ -679,6 +769,7 @@ export default function Home() {
                 <LineChart data={current.day} margin={{ top: 18, right: 12, bottom: 4, left: -20 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
                   <ReferenceArea y1={0} y2={3} fill="#226047" fillOpacity={0.06} />
+                  <ReferenceLine y={3} stroke="#226047" strokeOpacity={0.32} strokeDasharray="3 4" />
                   <XAxis
                     dataKey="hour"
                     type="number"
@@ -689,22 +780,25 @@ export default function Home() {
                     tickLine={false}
                     tickMargin={10}
                   />
-                  <YAxis domain={[0, 'auto']} ticks={[0, 3, 6, 9, 12]} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, todayScale.upper]} ticks={todayScale.ticks} axisLine={false} tickLine={false} />
                   <ReferenceLine
-                    x={Number(current.time.slice(11, 13))}
+                    x={currentHour}
                     stroke="#226047"
                     strokeDasharray="3 4"
                     label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />
+                  <ReferenceDot x={currentHour} y={current.uv} r={3.5} fill="#111111" stroke="#ffffff" strokeWidth={1.5} />
                   <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#9b9b9b', strokeWidth: 1 }} />
                   <Line dataKey="pastUv" type="monotone" stroke="#111111" strokeWidth={2} dot={false} isAnimationActive={false} />
-                  <Line dataKey="forecastUv" type="monotone" stroke="#226047" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
+                  <Line dataKey="forecastUv" type="monotone" stroke="#777777" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
+                  <Line dataKey="clearSkyUv" type="monotone" stroke="#226047" strokeWidth={1.5} dot={false} isAnimationActive={false} />
                 </LineChart>
               </ChartContainer>
             ) : (
               <div className="day-chart-empty">Hourly data unavailable</div>
             )}
-            <p className="day-source">Forecast model: CAMS ENSEMBLE via Open-Meteo.</p>
+            <p className="day-guidance">Use the clear-sky potential for protection decisions: hourly cloud estimates can miss short brighter intervals.</p>
+            <p className="day-source">CAMS ENSEMBLE via Open-Meteo · model estimates, not sensor readings.</p>
           </div>
         </div>
       </section>
@@ -756,18 +850,46 @@ export default function Home() {
                   width={54}
                 />
                 <ReferenceLine y={12} stroke="#226047" strokeOpacity={0.28} strokeDasharray="4 6" />
+                {currentAnnualPoint && (
+                  <ReferenceLine
+                    x={currentAnnualPoint.day}
+                    stroke="#111111"
+                    strokeWidth={1.4}
+                    label={{ value: 'TODAY', position: 'insideTopRight', fill: '#111111', fontSize: 9 }}
+                  />
+                )}
+                {lowSeasonEnd && (
+                  <ReferenceLine
+                    x={lowSeasonEnd.day}
+                    stroke="#8b8b8b"
+                    strokeDasharray="3 4"
+                    label={{ value: 'LOW ALL DAY ENDS', position: 'insideBottomRight', fill: '#686868', fontSize: 8 }}
+                  />
+                )}
+                {lowSeasonStart && (
+                  <ReferenceLine
+                    x={lowSeasonStart.day}
+                    stroke="#8b8b8b"
+                    strokeDasharray="3 4"
+                    label={{ value: 'LOW ALL DAY STARTS', position: 'insideBottomLeft', fill: '#686868', fontSize: 8 }}
+                  />
+                )}
                 <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#226047', strokeWidth: 1 }} />
                 <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
                 <Area
                   dataKey="protection"
                   stackId="uv"
-                  stroke="#47715f"
-                  strokeWidth={1.5}
+                  stroke="none"
                   fill="url(#protectFill)"
                   isAnimationActive={false}
                 />
               </AreaChart>
             </ChartContainer>
+          </div>
+          <div className="year-references" aria-label="Annual chart reference dates">
+            {currentAnnualPoint && <span><i className="reference-today" /> Today · {currentAnnualPoint.date}</span>}
+            {lowSeasonEnd && <span><i /> Low all day ends · {lowSeasonEnd.date}</span>}
+            {lowSeasonStart && <span><i /> Low all day starts · {lowSeasonStart.date}</span>}
           </div>
           <div className="chart-caption">
             <p>Read vertically: white time before or after the green band is the day’s modeled low-UV window.</p>

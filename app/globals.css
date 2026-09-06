@@ -200,14 +200,16 @@ h1 em, h2 em { color: var(--primary); font: inherit; font-style: normal; }
 .day-chart-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; margin-bottom: .25rem; }
 .day-chart-header p { margin: 0 0 .15rem; color: #111; font-size: .7rem; }
 .day-chart-header small { color: var(--muted-foreground); font-size: .62rem; }
-.day-legend { display: flex; gap: 1rem; color: var(--muted-foreground); font-size: .62rem; }
+.day-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .45rem 1rem; color: var(--muted-foreground); font-size: .62rem; }
 .day-legend span { display: flex; align-items: center; gap: .4rem; }
 .day-legend i { width: 1.15rem; height: 0; border-top: 2px solid #111; }
-.day-legend .forecast-line { border-top-color: var(--primary); border-top-style: dashed; }
+.day-legend .forecast-line { border-top-color: #777; border-top-style: dashed; }
+.day-legend .potential-line { border-top-color: var(--primary); border-top-width: 1.5px; }
 .day-chart { width: 100%; height: 210px; aspect-ratio: auto; }
 .day-chart text { fill: #686868; font: .58rem/1 var(--font-mono); }
 .day-chart-empty { height: 180px; display: grid; place-items: center; color: var(--muted-foreground); font-size: .7rem; }
-.day-source { margin: -.1rem 0 0; color: var(--muted-foreground); font-size: .6rem; text-align: right; }
+.day-guidance { margin: .2rem 0 0; color: #404040; font-size: .65rem; }
+.day-source { margin: .25rem 0 0; color: var(--muted-foreground); font-size: .58rem; }
 .daily-tooltip { min-width: 8rem; }
 
 .year-section { margin: 0 0 1.15rem; border-radius: 1.2rem; background: var(--card); padding: 1.35rem; }
@@ -234,6 +236,10 @@ h1 em, h2 em { color: var(--primary); font: inherit; font-style: normal; }
 .chart-tooltip-date { color: #bdbdbd; font-size: .62rem; text-transform: uppercase; }
 .chart-tooltip-main { margin-top: .3rem !important; font-weight: 600; }
 .chart-tooltip-note { margin-top: .3rem !important; color: #bdbdbd; font-size: .62rem; }
+.year-references { display: flex; flex-wrap: wrap; gap: .45rem 1rem; padding: .65rem .1rem 0; color: var(--muted-foreground); font-size: .6rem; }
+.year-references span { display: inline-flex; align-items: center; gap: .35rem; }
+.year-references i { width: .65rem; height: 0; border-top: 1px dashed #8b8b8b; }
+.year-references .reference-today { border-top: 1.5px solid #111; }
 .chart-caption { display: flex; justify-content: space-between; gap: 1rem; border-top: 1px solid var(--border); padding-top: .75rem; }
 .chart-caption p { margin: 0; color: var(--muted-foreground); font-size: .62rem; }
 
