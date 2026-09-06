@@ -12,12 +12,12 @@ import {
 import {
   Area,
   AreaChart,
+  Bar,
   CartesianGrid,
-  Line,
-  LineChart,
+  ComposedChart,
   ReferenceArea,
-  ReferenceDot,
   ReferenceLine,
+  Scatter,
   Tooltip,
   XAxis,
   YAxis,
@@ -49,16 +49,19 @@ type CurrentUv = {
   clearSkyUv: number;
   isDay: boolean;
   day: DailyUvPoint[];
+  protectionStart: number | null;
+  protectionEnd: number | null;
 };
 
 type DailyUvPoint = {
-  time: string;
-  hour: number;
+  midpoint: number;
+  startHour: number;
   label: string;
-  pastUv: number | null;
-  forecastUv: number | null;
-  clearSkyUv: number | null;
-  isCurrent: boolean;
+  meanUv: number;
+  pastMeanUv: number | null;
+  forecastMeanUv: number | null;
+  peakUv: number;
+  phase: 'past' | 'current' | 'forecast';
 };
 
 type LiveUvResponse = {
@@ -70,7 +73,6 @@ type LiveUvResponse = {
   hourly: {
     time: string[];
     uv_index: Array<number | null>;
-    uv_index_clear_sky: Array<number | null>;
   };
 };
 
@@ -118,9 +120,9 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 const todayChartConfig = {
-  pastUv: { label: 'Earlier today', color: '#111111' },
-  forecastUv: { label: 'Forecast with clouds', color: '#777777' },
-  clearSkyUv: { label: 'Clear-sky potential', color: '#226047' },
+  pastMeanUv: { label: 'Estimated hourly mean', color: '#5f5f5f' },
+  forecastMeanUv: { label: 'Forecast hourly mean', color: '#c4c4c4' },
+  peakUv: { label: 'Highest sampled UV', color: '#226047' },
 } satisfies ChartConfig;
 
 const monthTicks = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
@@ -324,9 +326,8 @@ function localCalendarDate(timezone: string) {
 function dailyUvScale(points: DailyUvPoint[]) {
   const maximum = points.reduce((highest, point) => Math.max(
     highest,
-    point.pastUv ?? 0,
-    point.forecastUv ?? 0,
-    point.clearSkyUv ?? 0,
+    point.meanUv,
+    point.peakUv,
   ), 0);
   const roughMaximum = Math.max(3, Math.ceil(maximum * 1.08));
   const step = roughMaximum <= 5 ? 1 : roughMaximum <= 10 ? 2 : 3;
@@ -334,6 +335,72 @@ function dailyUvScale(points: DailyUvPoint[]) {
   return {
     upper,
     ticks: Array.from({ length: upper / step + 1 }, (_, index) => index * step),
+  };
+}
+
+function buildHourlyExposure(
+  times: string[],
+  values: Array<number | null>,
+  currentTime: string,
+  currentUv: number,
+) {
+  const currentDate = currentTime.slice(0, 10);
+  const startIndex = times.findIndex((time) => time.startsWith(currentDate));
+  const currentHour = decimalHour(currentTime);
+
+  if (startIndex < 0) {
+    return { points: [] as DailyUvPoint[], protectionStart: null, protectionEnd: null };
+  }
+
+  const samples = times
+    .slice(startIndex, startIndex + 25)
+    .map((time, index) => ({ hour: index, uv: values[startIndex + index] }))
+    .filter((sample): sample is { hour: number; uv: number } => sample.uv !== null && sample.uv !== undefined);
+  const matchingCurrent = samples.find((sample) => Math.abs(sample.hour - currentHour) < 0.001);
+
+  if (matchingCurrent) {
+    matchingCurrent.uv = currentUv;
+  } else if (currentHour >= 0 && currentHour <= 24) {
+    samples.push({ hour: currentHour, uv: currentUv });
+    samples.sort((a, b) => a.hour - b.hour);
+  }
+
+  const points = Array.from({ length: 24 }, (_, startHour) => {
+    const intervalSamples = samples.filter((sample) => (
+      sample.hour >= startHour && sample.hour <= startHour + 1
+    ));
+    if (intervalSamples.length < 2) return null;
+
+    const area = intervalSamples.slice(0, -1).reduce((total, sample, index) => {
+      const next = intervalSamples[index + 1];
+      return total + ((sample.uv + next.uv) / 2) * (next.hour - sample.hour);
+    }, 0);
+    const peakUv = Math.max(...intervalSamples.map((sample) => sample.uv));
+    const phase = startHour + 1 <= currentHour
+      ? 'past'
+      : startHour <= currentHour
+        ? 'current'
+        : 'forecast';
+
+    return {
+      midpoint: startHour + 0.5,
+      startHour,
+      label: `${formatHour(startHour)}–${formatHour(startHour + 1)}`,
+      meanUv: area,
+      pastMeanUv: phase === 'forecast' ? null : area,
+      forecastMeanUv: phase === 'forecast' ? area : null,
+      peakUv,
+      phase,
+    } satisfies DailyUvPoint;
+  }).filter((point): point is DailyUvPoint => point !== null);
+
+  const protectionHours = points.filter((point) => point.peakUv >= 3);
+  return {
+    points,
+    protectionStart: protectionHours[0]?.startHour ?? null,
+    protectionEnd: protectionHours.length
+      ? protectionHours[protectionHours.length - 1].startHour + 1
+      : null,
   };
 }
 
@@ -357,15 +424,14 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
 function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DailyUvPoint }> }) {
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
-  const uv = point.pastUv ?? point.forecastUv;
 
   return (
     <div className="chart-tooltip daily-tooltip">
       <p className="chart-tooltip-date">{point.label}</p>
-      <p className="chart-tooltip-main">Cloud-adjusted · {uv?.toFixed(1) ?? '—'} UVI</p>
-      <p className="chart-tooltip-note">Clear-sky potential · {point.clearSkyUv?.toFixed(1) ?? '—'} UVI</p>
+      <p className="chart-tooltip-main">Estimated mean · {point.meanUv.toFixed(1)} UVI</p>
+      <p className="chart-tooltip-note">Highest sampled · {point.peakUv.toFixed(1)} UVI</p>
       <p className="chart-tooltip-note">
-        {point.isCurrent ? 'Current estimate' : point.pastUv !== null ? 'Earlier hourly estimate' : 'Hourly forecast'}
+        {point.phase === 'past' ? 'Completed hour' : point.phase === 'current' ? 'Current hour' : 'Forecast hour'}
       </p>
     </div>
   );
@@ -447,8 +513,8 @@ export default function Home() {
           latitude: String(location.latitude),
           longitude: String(location.longitude),
           current: 'uv_index,uv_index_clear_sky',
-          hourly: 'uv_index,uv_index_clear_sky',
-          forecast_days: '1',
+          hourly: 'uv_index',
+          forecast_days: '2',
           timezone: 'auto',
         });
         const daylightParams = new URLSearchParams({
@@ -475,35 +541,12 @@ export default function Home() {
         if (!response.ok) throw new Error('UV service unavailable');
         const data = (await response.json()) as LiveUvResponse;
         const currentTime = data.current.time;
-        const currentDate = currentTime.slice(0, 10);
-        const currentHour = decimalHour(currentTime);
-        const day = data.hourly.time.flatMap((time, index) => {
-          if (!time.startsWith(currentDate)) return [];
-          const uv = data.hourly.uv_index[index];
-          const clearSkyUv = data.hourly.uv_index_clear_sky[index];
-          if ((uv === null || uv === undefined) && (clearSkyUv === null || clearSkyUv === undefined)) return [];
-          if (time === currentTime) return [];
-          const isPast = time < currentTime;
-          return [{
-            time,
-            hour: decimalHour(time),
-            label: time.slice(11, 16),
-            pastUv: isPast ? (uv ?? null) : null,
-            forecastUv: isPast ? null : (uv ?? null),
-            clearSkyUv: clearSkyUv ?? null,
-            isCurrent: false,
-          }];
-        });
-        day.push({
-          time: currentTime,
-          hour: currentHour,
-          label: currentTime.slice(11, 16),
-          pastUv: data.current.uv_index,
-          forecastUv: data.current.uv_index,
-          clearSkyUv: data.current.uv_index_clear_sky,
-          isCurrent: true,
-        });
-        day.sort((a, b) => a.hour - b.hour);
+        const exposure = buildHourlyExposure(
+          data.hourly.time,
+          data.hourly.uv_index,
+          currentTime,
+          data.current.uv_index,
+        );
         setCurrent({
           time: currentTime,
           uv: data.current.uv_index,
@@ -513,7 +556,9 @@ export default function Home() {
             : daylight?.current?.is_day === 0
               ? false
               : data.current.uv_index_clear_sky > 0,
-          day,
+          day: exposure.points,
+          protectionStart: exposure.protectionStart,
+          protectionEnd: exposure.protectionEnd,
         });
       } catch (requestError) {
         if ((requestError as Error).name !== 'AbortError') {
@@ -623,9 +668,6 @@ export default function Home() {
   const currentBand = current?.isDay === false
     ? { label: 'Night', action: 'Sun below the horizon', tone: 'night' }
     : uvBand(current?.uv ?? 0);
-  const guidanceBand = current?.isDay === false
-    ? currentBand
-    : uvBand(Math.max(current?.uv ?? 0, current?.clearSkyUv ?? 0));
   const todayScale = dailyUvScale(current?.day ?? []);
   const currentHour = current ? decimalHour(current.time) : 0;
 
@@ -732,22 +774,26 @@ export default function Home() {
         <div className="now-insight">
           <div className="now-summary">
             <div>
-              <h2>{current ? guidanceBand.action : 'Current estimate unavailable'}</h2>
+              <h2>{current ? currentBand.action : 'Current estimate unavailable'}</h2>
               <p className="insight-copy">
                 {current && !current.isDay
                   ? `It is night in ${location.name}. Direct solar UV exposure is not expected until daylight.`
-                  : current && Math.max(current.uv, current.clearSkyUv) < 3
-                  ? 'Current and clear-sky UV are both below 3, where protection is usually not required for routine time outdoors.'
+                  : current && current.uv < 3
+                  ? 'The current modeled UV is below 3, where protection is usually not required for routine time outdoors.'
                   : current
-                    ? 'The clear-sky potential is 3 or higher. Plan for protection even when the current cloud-adjusted estimate is lower.'
+                    ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
                     : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
               </p>
             </div>
-            {current?.isDay && (
-              <div className="condition-note">
-                <span>
-                  Modeled clouds <strong>{current.uv.toFixed(1)}</strong> · clear-sky potential <strong>{current.clearSkyUv.toFixed(1)}</strong>
-                </span>
+            {current && (
+              <div className="daily-summary">
+                <span>Today’s protection window</span>
+                <strong>
+                  {current.protectionStart !== null && current.protectionEnd !== null
+                    ? `${formatHour(current.protectionStart)}–${formatHour(current.protectionEnd)}`
+                    : 'No hourly peak reaches UVI 3'}
+                </strong>
+                <small>Uses the highest sampled value in each hour, not the mean.</small>
               </div>
             )}
           </div>
@@ -756,25 +802,25 @@ export default function Home() {
             <div className="day-chart-header">
               <div>
                 <p>Today</p>
-                <small>Model estimates · local time</small>
+                <small>Hourly exposure estimate · local time</small>
               </div>
               <div className="day-legend" aria-label="Daily chart legend">
-                <span><i className="past-line" /> Earlier</span>
-                <span><i className="forecast-line" /> Forecast with clouds</span>
-                <span><i className="potential-line" /> Clear-sky potential</span>
+                <span><i className="mean-bar" /> Mean</span>
+                <span><i className="forecast-bar" /> Forecast mean</span>
+                <span><i className="peak-dot" /> Highest sample</span>
               </div>
             </div>
             {current?.day.length ? (
               <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 620, height: 220 }}>
-                <LineChart data={current.day} margin={{ top: 18, right: 12, bottom: 4, left: -20 }}>
+                <ComposedChart data={current.day} margin={{ top: 18, right: 12, bottom: 4, left: -20 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
                   <ReferenceArea y1={0} y2={3} fill="#226047" fillOpacity={0.06} />
                   <ReferenceLine y={3} stroke="#226047" strokeOpacity={0.32} strokeDasharray="3 4" />
                   <XAxis
-                    dataKey="hour"
+                    dataKey="midpoint"
                     type="number"
-                    domain={[0, 23]}
-                    ticks={[0, 4, 8, 12, 16, 20, 23]}
+                    domain={[0, 24]}
+                    ticks={[0, 4, 8, 12, 16, 20, 24]}
                     tickFormatter={(value) => `${String(value).padStart(2, '0')}:00`}
                     axisLine={false}
                     tickLine={false}
@@ -787,18 +833,17 @@ export default function Home() {
                     strokeDasharray="3 4"
                     label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />
-                  <ReferenceDot x={currentHour} y={current.uv} r={3.5} fill="#111111" stroke="#ffffff" strokeWidth={1.5} />
-                  <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#9b9b9b', strokeWidth: 1 }} />
-                  <Line dataKey="pastUv" type="monotone" stroke="#111111" strokeWidth={2} dot={false} isAnimationActive={false} />
-                  <Line dataKey="forecastUv" type="monotone" stroke="#777777" strokeWidth={2} strokeDasharray="5 5" dot={false} isAnimationActive={false} />
-                  <Line dataKey="clearSkyUv" type="monotone" stroke="#226047" strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                </LineChart>
+                  <Tooltip content={<DailyTooltip />} cursor={{ fill: '#eeeeee', fillOpacity: 0.55 }} />
+                  <Bar dataKey="pastMeanUv" stackId="mean" barSize={14} radius={[3, 3, 0, 0]} fill="#555555" isAnimationActive={false} />
+                  <Bar dataKey="forecastMeanUv" stackId="mean" barSize={14} radius={[3, 3, 0, 0]} fill="#c4c4c4" isAnimationActive={false} />
+                  <Scatter dataKey="peakUv" fill="#226047" isAnimationActive={false} />
+                </ComposedChart>
               </ChartContainer>
             ) : (
               <div className="day-chart-empty">Hourly data unavailable</div>
             )}
-            <p className="day-guidance">Use the clear-sky potential for protection decisions: hourly cloud estimates can miss short brighter intervals.</p>
-            <p className="day-source">CAMS ENSEMBLE via Open-Meteo · model estimates, not sensor readings.</p>
+            <p className="day-guidance">Bars estimate the mean between hourly samples; dots show the highest sampled value. Protection guidance uses the peak.</p>
+            <p className="day-source">CAMS ENSEMBLE via Open-Meteo · hourly model samples, not observations. Shorter changes between samples cannot be recovered.</p>
           </div>
         </div>
       </section>
