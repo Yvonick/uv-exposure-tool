@@ -1,6 +1,6 @@
 'use client';
 
-import { SyntheticEvent, useEffect, useMemo, useState } from 'react';
+import { SyntheticEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Check,
@@ -26,6 +26,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
+import SolarGlobe from './solar-globe';
+import { buildAnnualData, formatHour, formatLowWindow, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
+import { DEFAULT_LOCATION, formatLocationLabel, lookupLocations, lookupLocation, resolveCoordinates, type Location } from '@/lib/locations';
 import {
   Combobox,
   ComboboxContent,
@@ -34,15 +37,6 @@ import {
   ComboboxItem,
   ComboboxList,
 } from '@/components/ui/combobox';
-
-type Location = {
-  name: string;
-  country: string;
-  admin1?: string;
-  latitude: number;
-  longitude: number;
-  timezone: string;
-};
 
 type CurrentUv = {
   time: string;
@@ -83,36 +77,6 @@ type DaylightResponse = {
   };
 };
 
-type GeocodingResponse = {
-  results?: Array<{
-    name: string;
-    country: string;
-    admin1?: string;
-    latitude: number;
-    longitude: number;
-    timezone: string;
-  }>;
-};
-
-type AnnualPoint = {
-  day: number;
-  date: string;
-  base: number;
-  protection: number;
-  start: number | null;
-  end: number | null;
-  maxUv: number;
-};
-
-const DEFAULT_LOCATION: Location = {
-  name: 'Berlin',
-  country: 'Germany',
-  admin1: 'Berlin',
-  latitude: 52.5244,
-  longitude: 13.4105,
-  timezone: 'Europe/Berlin',
-};
-
 const chartConfig = {
   protection: {
     label: 'Sun protection recommended',
@@ -126,7 +90,6 @@ const todayChartConfig = {
   peakUv: { label: 'Highest sampled UV', color: '#226047' },
 } satisfies ChartConfig;
 
-const monthTicks = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
 const months = [
   'Jan',
   'Feb',
@@ -142,141 +105,12 @@ const months = [
   'Dec',
 ];
 
-function timezoneOffsetMinutes(date: Date, timezone: string) {
-  try {
-    const parts = new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    }).formatToParts(date);
-    const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-    const asUtc = Date.UTC(
-      Number(values.year),
-      Number(values.month) - 1,
-      Number(values.day),
-      Number(values.hour),
-      Number(values.minute),
-    );
-    return (asUtc - date.getTime()) / 60_000;
-  } catch {
-    return 0;
-  }
-}
-
-function buildAnnualData(location: Location, year: number): AnnualPoint[] {
-  const daysInYear = (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86_400_000;
-  const latitude = (location.latitude * Math.PI) / 180;
-  const thresholdUv = 3;
-  const thresholdCosine = Math.pow(thresholdUv / 12.5, 1 / 2.42);
-  const thresholdElevation = Math.asin(thresholdCosine);
-
-  return Array.from({ length: daysInYear }, (_, day) => {
-    const date = new Date(Date.UTC(year, 0, day + 1, 12));
-    const gamma = (2 * Math.PI * day) / daysInYear;
-    const equationOfTime =
-      229.18 *
-      (0.000075 +
-        0.001868 * Math.cos(gamma) -
-        0.032077 * Math.sin(gamma) -
-        0.014615 * Math.cos(2 * gamma) -
-        0.040849 * Math.sin(2 * gamma));
-    const declination =
-      0.006918 -
-      0.399912 * Math.cos(gamma) +
-      0.070257 * Math.sin(gamma) -
-      0.006758 * Math.cos(2 * gamma) +
-      0.000907 * Math.sin(2 * gamma) -
-      0.002697 * Math.cos(3 * gamma) +
-      0.00148 * Math.sin(3 * gamma);
-    const noonCosine = Math.max(
-      0,
-      Math.sin(latitude) * Math.sin(declination) +
-        Math.cos(latitude) * Math.cos(declination),
-    );
-    const maxUv = 12.5 * Math.pow(noonCosine, 2.42);
-    const cosineHourAngle =
-      (Math.sin(thresholdElevation) - Math.sin(latitude) * Math.sin(declination)) /
-      (Math.cos(latitude) * Math.cos(declination));
-    const offset = timezoneOffsetMinutes(date, location.timezone);
-    const solarNoon = (720 - 4 * location.longitude - equationOfTime + offset) / 60;
-
-    let start: number | null = null;
-    let end: number | null = null;
-
-    if (cosineHourAngle <= -1) {
-      start = 0;
-      end = 24;
-    } else if (cosineHourAngle < 1) {
-      const hourAngle = (Math.acos(cosineHourAngle) * 180) / Math.PI;
-      start = Math.max(0, solarNoon - hourAngle / 15);
-      end = Math.min(24, solarNoon + hourAngle / 15);
-    }
-
-    return {
-      day,
-      date: new Intl.DateTimeFormat('en', {
-        month: 'short',
-        day: 'numeric',
-        timeZone: 'UTC',
-      }).format(date),
-      base: start ?? 0,
-      protection: start === null || end === null ? 0 : end - start,
-      start,
-      end,
-      maxUv,
-    };
-  });
-}
-
-function formatHour(value: number | null) {
-  if (value === null) return 'none';
-  if (value >= 23.99) return '24:00';
-  const hours = Math.floor(value);
-  const minutes = Math.round((value - hours) * 60);
-  const normalizedHours = minutes === 60 ? hours + 1 : hours;
-  const normalizedMinutes = minutes === 60 ? 0 : minutes;
-  return `${String(normalizedHours).padStart(2, '0')}:${String(normalizedMinutes).padStart(2, '0')}`;
-}
-
 function uvBand(uv: number) {
   if (uv < 3) return { label: 'Low', action: 'Sunscreen usually not needed', tone: 'low' };
   if (uv < 6) return { label: 'Moderate', action: 'Sun protection recommended', tone: 'moderate' };
   if (uv < 8) return { label: 'High', action: 'Protection is important', tone: 'high' };
   if (uv < 11) return { label: 'Very high', action: 'Extra protection needed', tone: 'very-high' };
   return { label: 'Extreme', action: 'Avoid unprotected exposure', tone: 'extreme' };
-}
-
-function formatLocationLabel(location: Location) {
-  return [
-    location.name,
-    location.admin1 && location.admin1 !== location.name ? location.admin1 : null,
-    location.country,
-  ].filter(Boolean).join(', ');
-}
-
-async function lookupLocations(query: string, count = 6, signal?: AbortSignal): Promise<Location[]> {
-  const params = new URLSearchParams({ name: query, count: String(count), language: 'en', format: 'json' });
-  const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal });
-  if (!response.ok) throw new Error('Location search failed');
-  const data = (await response.json()) as GeocodingResponse;
-  return (data.results ?? []).map((result) => ({
-      name: result.name,
-      country: result.country,
-      admin1: result.admin1,
-      latitude: result.latitude,
-      longitude: result.longitude,
-      timezone: result.timezone,
-    }));
-}
-
-async function lookupLocation(query: string): Promise<Location> {
-  const [result] = await lookupLocations(query, 1);
-  if (!result) throw new Error('No matching place found');
-  return result;
 }
 
 function formatLocalTime(timezone: string) {
@@ -413,11 +247,9 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
     <div className="chart-tooltip">
       <p className="chart-tooltip-date">{point.date}</p>
       <p className="chart-tooltip-main">
-        {point.start === null
-          ? 'Low UV all day'
-          : `${formatHour(point.start)}–${formatHour(point.end)} protect`}
+        {formatLowWindow(point.lowWindows)} · UVI below 3
       </p>
-      <p className="chart-tooltip-note">Clear-sky peak · {point.maxUv.toFixed(1)} UVI</p>
+      <p className="chart-tooltip-note">Theoretical UV peak · {point.maxUv.toFixed(1)} UVI</p>
     </div>
   );
 }
@@ -448,6 +280,9 @@ export default function Home() {
   const [loadingLocation, setLoadingLocation] = useState(false);
   const [loadingUv, setLoadingUv] = useState(true);
   const [error, setError] = useState('');
+  const [liveError, setLiveError] = useState('');
+  const locationRequest = useRef(0);
+  const locationController = useRef<AbortController | null>(null);
   const calendarDate = localCalendarDate(location.timezone);
   const year = calendarDate.year;
 
@@ -469,6 +304,10 @@ export default function Home() {
     [annualData],
   );
   const currentAnnualPoint = annualData[calendarDate.dayIndex] ?? null;
+  const lowSeason = useMemo(() => allDayLowSeason(annualData), [annualData]);
+  const annualMonthTicks = useMemo(() => months.map((_, month) => (Date.UTC(year, month, 1) - Date.UTC(year, 0, 1)) / 86_400_000), [year]);
+
+  useEffect(() => () => locationController.current?.abort(), []);
 
   useEffect(() => {
     const updateClock = () => setLocalTime(formatLocalTime(location.timezone));
@@ -487,7 +326,7 @@ export default function Home() {
     const debounce = window.setTimeout(async () => {
       try {
         const matches = await lookupLocations(candidate, 6, controller.signal);
-        setSuggestions(matches);
+        if (!controller.signal.aborted) setSuggestions(matches);
       } catch (suggestionError) {
         if ((suggestionError as Error).name !== 'AbortError') setSuggestions([]);
       } finally {
@@ -508,7 +347,7 @@ export default function Home() {
         setLoadingUv(true);
         setCurrent(null);
       }
-      setError('');
+      setLiveError('');
       try {
         const params = new URLSearchParams({
           latitude: String(location.latitude),
@@ -552,6 +391,7 @@ export default function Home() {
           currentTime,
           data.current.uv_index,
         );
+        if (controller.signal.aborted) return;
         setCurrent({
           time: currentTime,
           uv: data.current.uv_index,
@@ -567,10 +407,10 @@ export default function Home() {
         });
       } catch (requestError) {
         if ((requestError as Error).name !== 'AbortError') {
-          setError('Live UV is temporarily unavailable. The annual clear-sky view still works.');
+          if (!controller.signal.aborted) setLiveError('Live UV is temporarily unavailable. The theoretical annual view still works.');
         }
       } finally {
-        if (showLoader) setLoadingUv(false);
+        if (showLoader && !controller.signal.aborted) setLoadingUv(false);
       }
     }
     void loadUv(true);
@@ -592,14 +432,14 @@ export default function Home() {
           {
             name: 'check_uv_for_location',
             title: 'Check UV for a location',
-            description: 'Find a city or postal code and update the visible UV Exposure Tool dashboard and annual clear-sky chart.',
+            description: 'Find a city, place or decimal latitude, longitude and update the UV dashboard with local elevation.',
             inputSchema: {
               type: 'object',
               properties: {
                 location: {
                   type: 'string',
                   minLength: 2,
-                  description: 'A city, city plus country, or postal code.',
+                  description: 'A city, place, city plus country, or decimal latitude, longitude.',
                 },
               },
               required: ['location'],
@@ -611,17 +451,14 @@ export default function Home() {
               if (typeof candidate.location !== 'string' || candidate.location.trim().length < 2) {
                 throw new Error('location must be a string with at least two characters');
               }
-              const nextLocation = await lookupLocation(candidate.location.trim());
-              setLocation(nextLocation);
-              setQuery(formatLocationLabel(nextLocation));
-              setSuggestions([]);
-              setLoadingSuggestions(false);
-              setError('');
+              const locationQuery = candidate.location.trim();
+              const nextLocation = await resolveAndChoose((signal) => lookupLocation(locationQuery, signal));
               return {
                 dashboardUpdated: true,
                 location: nextLocation.name,
                 country: nextLocation.country,
                 timezone: nextLocation.timezone,
+                elevation: nextLocation.elevation,
               };
             },
           },
@@ -637,37 +474,50 @@ export default function Home() {
 
   function updateLocationQuery(value: string) {
     const candidate = value.trim();
+    locationController.current?.abort();
+    locationRequest.current++;
+    setLoadingLocation(false);
     setQuery(value);
     setSuggestions([]);
     setLoadingSuggestions(candidate.length >= 2 && candidate !== formatLocationLabel(location));
   }
 
   function chooseLocation(nextLocation: Location) {
+    locationController.current?.abort();
+    locationRequest.current++;
     setLocation(nextLocation);
     setQuery(formatLocationLabel(nextLocation));
     setSuggestions([]);
     setLoadingSuggestions(false);
+    setLoadingLocation(false);
     setError('');
+  }
+
+  async function resolveAndChoose(resolve: (signal: AbortSignal) => Promise<Location>) {
+    locationController.current?.abort();
+    const request = ++locationRequest.current;
+    const controller = new AbortController();
+    locationController.current = controller;
+    setLoadingLocation(true);
+    setError('');
+    try {
+      const nextLocation = await resolve(controller.signal);
+      if (request !== locationRequest.current || controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError');
+      chooseLocation(nextLocation);
+      return nextLocation;
+    } catch (failure) {
+      if (request === locationRequest.current && (failure as Error).name !== 'AbortError') setError((failure as Error).message);
+      throw failure;
+    } finally {
+      if (request === locationRequest.current) setLoadingLocation(false);
+    }
   }
 
   async function searchLocation(event: SyntheticEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmedQuery = query.trim();
-    if (trimmedQuery.length < 2) return;
-    setLoadingLocation(true);
-    setError('');
-    try {
-      const nextLocation = await lookupLocation(trimmedQuery);
-      chooseLocation(nextLocation);
-    } catch (searchError) {
-      setError(
-        (searchError as Error).message === 'No matching place found'
-          ? 'No matching place found. Try a city plus country or a postal code.'
-          : 'Location search is temporarily unavailable. Please try again.',
-      );
-    } finally {
-      setLoadingLocation(false);
-    }
+    const candidate = query.trim();
+    if (candidate.length < 2 || candidate === formatLocationLabel(location)) return;
+    try { await resolveAndChoose((signal) => lookupLocation(candidate, signal)); } catch { /* Error is displayed above. */ }
   }
 
   const currentBand = current?.isDay === false
@@ -682,7 +532,7 @@ export default function Home() {
         <div className="location-heading">
           <div className="title-search">
         <form className="location-search" onSubmit={searchLocation}>
-          <label className="location-label" htmlFor="location-search">Explore a location</label>
+          <label className="location-label" htmlFor="location-search">Enter a location</label>
           <div className="search-row">
             <MapPin className="search-pin" aria-hidden="true" />
             <Combobox
@@ -702,10 +552,10 @@ export default function Home() {
               <ComboboxInput
                 id="location-search"
                 className="location-input"
-                placeholder="City or postal code"
+                placeholder="City or place"
                 autoComplete="off"
                 showTrigger={false}
-                aria-label="Search for a city or postal code"
+                aria-label="City, place, or latitude and longitude"
                 aria-busy={loadingSuggestions}
               />
               <ComboboxContent className="location-suggestions">
@@ -740,9 +590,10 @@ export default function Home() {
               {loadingLocation ? <LoaderCircle className="spin" /> : <Search />}
             </Button>
           </div>
+          <p className="coordinate-hint">Or enter latitude, longitude · e.g. 52.52, 13.41</p>
           <div className="location-meta">
             <p className="location-result">
-              <Check aria-hidden="true" /> {formatLocationLabel(location)}
+              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {Math.round(location.elevation)} m
             </p>
             <p className="location-clock"><span>Local time</span><time>{localTime}</time></p>
           </div>
@@ -797,18 +648,16 @@ export default function Home() {
           </div>
         </section>
       </header>
-      {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error}</div>}
+      {(error || liveError) && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error || liveError}</div>}
 
       <section className="year-section" aria-labelledby="year-title">
         <div className="year-heading">
           <div className="year-title-group">
-            <p className="eyebrow coral"><span /> {location.name} · {year}</p>
-            <h1 id="year-title">UV through the year</h1><p className="year-subtitle">Estimated daily windows · clear sky · UVI below 3</p>
+            <h1 id="year-title">UV through the year</h1>
           </div>
-          <div className="peak-stat">
-            <span>Clear-sky peak</span>
-            <strong>{peakPoint.maxUv.toFixed(1)}</strong>
-            <small>around {peakPoint.date}</small>
+          <div className="year-stats">
+            <div className="peak-stat"><span>Theoretical UV peak</span><strong>{peakPoint.maxUv.toFixed(1)}</strong><small>{peakPoint.date} · {year}</small></div>
+            <div className="peak-stat window-stat"><span>Low-UV window today</span><strong>{currentAnnualPoint ? formatLowWindow(currentAnnualPoint.lowWindows) : '—'}</strong><small>UVI below 3 · local time</small><small>Low all day: {lowSeason}</small></div>
           </div>
         </div>
 
@@ -831,8 +680,8 @@ export default function Home() {
                   dataKey="day"
                   type="number"
                   domain={[0, annualData.length - 1]}
-                  ticks={monthTicks}
-                  tickFormatter={(value) => months[monthTicks.indexOf(value)] ?? ''}
+                  ticks={annualMonthTicks}
+                  tickFormatter={(value) => months[annualMonthTicks.indexOf(value)] ?? ''}
                   axisLine={false}
                   tickLine={false}
                   tickMargin={12}
@@ -878,34 +727,33 @@ export default function Home() {
                   fill="url(#protectFill)"
                   isAnimationActive={false}
                 />
+                <Area dataKey="secondBase" stackId="second" stroke="none" fill="transparent" isAnimationActive={false} />
+                <Area dataKey="secondProtection" stackId="second" stroke="none" fill="url(#protectFill)" isAnimationActive={false} />
               </AreaChart>
             </ChartContainer>
           </div>
-          <div className="year-references" aria-label="Annual chart reference dates">
-            {currentAnnualPoint && <span><i className="reference-today" /> Today · {currentAnnualPoint.date}</span>}
-            {lowSeasonEnd && <span><i /> Low all day ends · {lowSeasonEnd.date}</span>}
-            {lowSeasonStart && <span><i /> Low all day starts · {lowSeasonStart.date}</span>}
-          </div>
           <div className="chart-caption">
-            <p>Clear-sky model · fixed ozone · sea-level baseline. <a href="#method">Method</a></p>
-            <p>Times shown in {location.timezone.replace('_', ' ')}.</p>
+            <p>Theoretical daily windows · clear sky · {Math.round(location.elevation)} m. <a href="#method">Method</a></p>
+            <p>Local time</p>
           </div>
         </div>
       </section>
 
-      <UvFacts latitude={location.latitude} locationName={location.name} />
+      <UvFacts />
+      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveCoordinates(latitude, longitude, signal))} />
 
       <section className="method-section" id="method">
         <div className="method-copy">
           <h2>Method and sources</h2>
           <p>
-            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and a sea-level baseline. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. Its bars are estimated hourly means; dots mark the highest available sample, not a measured hourly maximum.
+            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. Its bars are estimated hourly means; dots mark the highest available sample, not a measured hourly maximum.
           </p>
         </div>
         <div className="sources">
-          <p>Sources</p>
+
           <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">WHO · UV Index guidance <ArrowRight /></a>
           <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich · clear-sky formula <ArrowRight /></a>
+          <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo · elevation <ArrowRight /></a>
           <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS / Open-Meteo · UV data <ArrowRight /></a>
         </div>
       </section>
