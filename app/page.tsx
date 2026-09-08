@@ -681,9 +681,8 @@ export default function Home() {
       <header className="dashboard-header" id="top">
         <div className="location-heading">
           <div className="title-search">
-            <h1>UV Exposure <span aria-hidden="true">-</span></h1>
         <form className="location-search" onSubmit={searchLocation}>
-          <label className="sr-only" htmlFor="location-search">Enter a location</label>
+          <label className="location-label" htmlFor="location-search">Explore a location</label>
           <div className="search-row">
             <MapPin className="search-pin" aria-hidden="true" />
             <Combobox
@@ -703,10 +702,10 @@ export default function Home() {
               <ComboboxInput
                 id="location-search"
                 className="location-input"
-                placeholder="Enter a location"
+                placeholder="City or postal code"
                 autoComplete="off"
                 showTrigger={false}
-                aria-label="Enter a location"
+                aria-label="Search for a city or postal code"
                 aria-busy={loadingSuggestions}
               />
               <ComboboxContent className="location-suggestions">
@@ -804,7 +803,7 @@ export default function Home() {
         <div className="year-heading">
           <div className="year-title-group">
             <p className="eyebrow coral"><span /> {location.name} · {year}</p>
-            <h2 id="year-title">UV through the year</h2><p className="year-subtitle">Estimated daily windows · clear sky · UVI below 3</p>
+            <h1 id="year-title">UV through the year</h1><p className="year-subtitle">Estimated daily windows · clear sky · UVI below 3</p>
           </div>
           <div className="peak-stat">
             <span>Clear-sky peak</span>
