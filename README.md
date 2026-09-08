@@ -1,14 +1,16 @@
 # UV Exposure Tool
 
-UV Exposure Tool answers two practical questions for any location:
+UV Exposure Tool is a yearly UV planner for any location:
 
-- What is the UV index right now?
-- How does UV change across today, from earlier modelled hours through the remaining forecast?
 - At what times of day is the UV index theoretically below 3 through the year, assuming clear-sky conditions?
+- What is the UV index right now, with a compact view of today's modelled conditions?
+- How do skin sensitivity, clouds, the atmosphere, ground reflection, latitude, seasons, altitude and duration affect UV exposure?
 
-Location search provides live place suggestions, and the selected location’s clock updates in 24-hour time.
+Location search is integrated with the title, with live place suggestions and the selected location’s clock in 24-hour time. Compact live conditions appear alongside it; the annual chart is the first full-width section.
 
-The prototype uses UV forecast data from the CAMS ENSEMBLE through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api), plus Open-Meteo geocoding. Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
+Five educational sections follow the annual chart. Skin phototypes are qualitative and do not change the UVI 3 guidance threshold. Surface reflectance values are approximate bounds, not personal exposure multipliers. Altitude and exposure-duration sliders are independent illustrative scenarios; they do not modify the annual model or forecast. The duration example calculates ambient UVI-hours as UV Index × minutes / 60, without estimating a safe exposure time.
+
+The prototype uses UV forecast data from CAMS Global through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api), plus Open-Meteo geocoding. Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
 
 ```text
 UVI ≈ 12.5 × cos(solar zenith angle)^2.42 × (ozone / 300 DU)^-1.23

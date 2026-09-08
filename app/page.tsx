@@ -25,6 +25,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
+import UvFacts from './uv-facts';
 import {
   Combobox,
   ComboboxContent,
@@ -516,6 +517,7 @@ export default function Home() {
           hourly: 'uv_index',
           forecast_days: '2',
           timezone: 'auto',
+          domains: 'cams_global',
         });
         const daylightParams = new URLSearchParams({
           latitude: String(location.latitude),
@@ -540,6 +542,9 @@ export default function Home() {
         ]);
         if (!response.ok) throw new Error('UV service unavailable');
         const data = (await response.json()) as LiveUvResponse;
+        if (!data.current || !Number.isFinite(data.current.uv_index) || !Array.isArray(data.hourly?.time) || !Array.isArray(data.hourly?.uv_index)) {
+          throw new Error('UV service returned incomplete data');
+        }
         const currentTime = data.current.time;
         const exposure = buildHourlyExposure(
           data.hourly.time,
@@ -673,24 +678,12 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <header className="site-header">
-        <a className="brand" href="#top" aria-label="UV Exposure Tool home">
-          <span>UV EXPOSURE TOOL</span>
-        </a>
-        <p className="header-note">Current + clear-sky model</p>
-        <a className="method-link" href="#method">Method <ArrowRight aria-hidden="true" /></a>
-      </header>
-
-      <section className="hero" id="top">
-        <div className="hero-copy">
-          <h1>UV levels by location.</h1>
-          <p className="intro">
-            Current conditions and estimated low-UV periods throughout the year.
-          </p>
-        </div>
-
+      <header className="dashboard-header" id="top">
+        <div className="location-heading">
+          <div className="title-search">
+            <h1>UV Exposure <span aria-hidden="true">-</span></h1>
         <form className="location-search" onSubmit={searchLocation}>
-          <label htmlFor="location-search">Enter a location</label>
+          <label className="sr-only" htmlFor="location-search">Enter a location</label>
           <div className="search-row">
             <MapPin className="search-pin" aria-hidden="true" />
             <Combobox
@@ -755,64 +748,23 @@ export default function Home() {
             <p className="location-clock"><span>Local time</span><time>{localTime}</time></p>
           </div>
         </form>
-      </section>
-
-      {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error}</div>}
-
-      <section className="now-grid" aria-label="Live UV conditions">
-        <article className={`uv-orb uv-${currentBand.tone}`}>
-          <p className="orb-kicker">Current UV estimate</p>
-          {loadingUv ? (
-            <LoaderCircle className="orb-loader spin" aria-label="Loading current UV" />
-          ) : (
-            <p className="uv-number">{current?.uv.toFixed(1) ?? '—'}</p>
-          )}
-          <p className="uv-band">{current ? currentBand.label : 'Unavailable'}</p>
-          <p className="updated">Data at {current?.time.slice(11, 16) ?? '—'} · local time {localTime}</p>
-        </article>
-
-        <div className="now-insight">
-          <div className="now-summary">
-            <div>
-              <h2>{current ? currentBand.action : 'Current estimate unavailable'}</h2>
-              <p className="insight-copy">
-                {current && !current.isDay
-                  ? `It is night in ${location.name}. Direct solar UV exposure is not expected until daylight.`
-                  : current && current.uv < 3
-                  ? 'The current modeled UV is below 3, where protection is usually not required for routine time outdoors.'
-                  : current
-                    ? 'At UV 3 and above, combine shade, clothing, a hat, sunglasses and broad-spectrum sunscreen.'
-                    : 'Use the annual model below for a planning view, then check live conditions again before heading out.'}
-              </p>
-            </div>
-            {current && (
-              <div className="daily-summary">
-                <span>Today’s protection window</span>
-                <strong>
-                  {current.protectionStart !== null && current.protectionEnd !== null
-                    ? `${formatHour(current.protectionStart)}–${formatHour(current.protectionEnd)}`
-                    : 'No hourly peak reaches UVI 3'}
-                </strong>
-                <small>Uses the highest sampled value in each hour, not the mean.</small>
-              </div>
-            )}
           </div>
-
-          <div className="day-chart-panel">
+        </div>
+        <section className="live-compact" aria-label="Live UV conditions">
+          <div className={`live-reading uv-${currentBand.tone}`}>
+            <p className="orb-kicker">UV now</p>
+            {loadingUv ? <LoaderCircle className="spin live-loader" aria-label="Loading current UV" /> : <p className="uv-number">{current?.uv.toFixed(1) ?? '—'}</p>}
+            <p className="uv-band">{current ? currentBand.label : 'Unavailable'}</p>
+            <p className="updated">{current?.time.slice(11, 16) ?? '—'} · estimate</p>
+          </div>
+          <div className="live-timeline">
             <div className="day-chart-header">
-              <div>
-                <p>Today</p>
-                <small>Hourly exposure estimate · local time</small>
-              </div>
-              <div className="day-legend" aria-label="Daily chart legend">
-                <span><i className="mean-bar" /> Mean</span>
-                <span><i className="forecast-bar" /> Forecast mean</span>
-                <span><i className="peak-dot" /> Highest sample</span>
-              </div>
+              <p>Today</p>
+              <div className="day-legend"><span><i className="mean-bar" /> Past</span><span><i className="forecast-bar" /> Forecast</span></div>
             </div>
             {current?.day.length ? (
-              <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 620, height: 220 }}>
-                <ComposedChart data={current.day} margin={{ top: 18, right: 12, bottom: 4, left: -20 }}>
+              <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 440, height: 135 }}>
+                <ComposedChart data={current.day} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
                   <ReferenceArea y1={0} y2={3} fill="#226047" fillOpacity={0.06} />
                   <ReferenceLine y={3} stroke="#226047" strokeOpacity={0.32} strokeDasharray="3 4" />
@@ -820,13 +772,13 @@ export default function Home() {
                     dataKey="midpoint"
                     type="number"
                     domain={[0, 24]}
-                    ticks={[0, 4, 8, 12, 16, 20, 24]}
+                    ticks={[0, 6, 12, 18, 24]}
                     tickFormatter={(value) => `${String(value).padStart(2, '0')}:00`}
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
                   />
-                  <YAxis domain={[0, todayScale.upper]} ticks={todayScale.ticks} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, todayScale.upper]} ticks={todayScale.ticks} axisLine={false} tickLine={false} minTickGap={12} />
                   <ReferenceLine
                     x={currentHour}
                     stroke="#226047"
@@ -834,25 +786,25 @@ export default function Home() {
                     label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />
                   <Tooltip content={<DailyTooltip />} cursor={{ fill: '#eeeeee', fillOpacity: 0.55 }} />
-                  <Bar dataKey="pastMeanUv" stackId="mean" barSize={14} radius={[3, 3, 0, 0]} fill="#555555" isAnimationActive={false} />
-                  <Bar dataKey="forecastMeanUv" stackId="mean" barSize={14} radius={[3, 3, 0, 0]} fill="#c4c4c4" isAnimationActive={false} />
+                  <Bar dataKey="pastMeanUv" stackId="mean" barSize={7} radius={[3, 3, 0, 0]} fill="#555555" isAnimationActive={false} />
+                  <Bar dataKey="forecastMeanUv" stackId="mean" barSize={7} radius={[3, 3, 0, 0]} fill="#c4c4c4" isAnimationActive={false} />
                   <Scatter dataKey="peakUv" fill="#226047" isAnimationActive={false} />
                 </ComposedChart>
               </ChartContainer>
             ) : (
               <div className="day-chart-empty">Hourly data unavailable</div>
             )}
-            <p className="day-guidance">Bars estimate the mean between hourly samples; dots show the highest sampled value. Protection guidance uses the peak.</p>
-            <p className="day-source">CAMS ENSEMBLE via Open-Meteo · hourly model samples, not observations. Shorter changes between samples cannot be recovered.</p>
+
           </div>
-        </div>
-      </section>
+        </section>
+      </header>
+      {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error}</div>}
 
       <section className="year-section" aria-labelledby="year-title">
         <div className="year-heading">
           <div className="year-title-group">
             <p className="eyebrow coral"><span /> {location.name} · {year}</p>
-            <h2 id="year-title">Estimated low-UV windows throughout the year.</h2>
+            <h2 id="year-title">UV through the year</h2><p className="year-subtitle">Estimated daily windows · clear sky · UVI below 3</p>
           </div>
           <div className="peak-stat">
             <span>Clear-sky peak</span>
@@ -863,8 +815,8 @@ export default function Home() {
 
         <div className="chart-panel">
           <div className="chart-legend" aria-label="Chart legend">
-            <span><i className="legend-low" /> Low UV · protection usually not needed</span>
-            <span><i className="legend-protect" /> Protect · UVI 3+</span>
+            <span><i className="legend-low" /> Low UV · below 3</span>
+            <span><i className="legend-protect" /> Protection recommended · UVI 3+</span>
           </div>
           <div className="chart-scroll">
             <ChartContainer config={chartConfig} className="annual-chart" initialDimension={{ width: 980, height: 400 }}>
@@ -885,6 +837,7 @@ export default function Home() {
                   axisLine={false}
                   tickLine={false}
                   tickMargin={12}
+                  minTickGap={24}
                 />
                 <YAxis
                   domain={[0, 24]}
@@ -900,7 +853,7 @@ export default function Home() {
                     x={currentAnnualPoint.day}
                     stroke="#111111"
                     strokeWidth={1.4}
-                    label={{ value: 'TODAY', position: 'insideTopRight', fill: '#111111', fontSize: 9 }}
+                    label={{ value: 'TODAY', position: currentAnnualPoint.day > annualData.length * 0.85 ? 'insideTopLeft' : 'insideTopRight', fill: '#111111', fontSize: 12 }}
                   />
                 )}
                 {lowSeasonEnd && (
@@ -908,7 +861,6 @@ export default function Home() {
                     x={lowSeasonEnd.day}
                     stroke="#8b8b8b"
                     strokeDasharray="3 4"
-                    label={{ value: 'LOW ALL DAY ENDS', position: 'insideBottomRight', fill: '#686868', fontSize: 8 }}
                   />
                 )}
                 {lowSeasonStart && (
@@ -916,7 +868,6 @@ export default function Home() {
                     x={lowSeasonStart.day}
                     stroke="#8b8b8b"
                     strokeDasharray="3 4"
-                    label={{ value: 'LOW ALL DAY STARTS', position: 'insideBottomLeft', fill: '#686868', fontSize: 8 }}
                   />
                 )}
                 <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#226047', strokeWidth: 1 }} />
@@ -937,17 +888,19 @@ export default function Home() {
             {lowSeasonStart && <span><i /> Low all day starts · {lowSeasonStart.date}</span>}
           </div>
           <div className="chart-caption">
-            <p>Read vertically: white time before or after the green band is the day’s modeled low-UV window.</p>
+            <p>Clear-sky model · fixed ozone · sea-level baseline. <a href="#method">Method</a></p>
             <p>Times shown in {location.timezone.replace('_', ' ')}.</p>
           </div>
         </div>
       </section>
 
+      <UvFacts latitude={location.latitude} locationName={location.name} />
+
       <section className="method-section" id="method">
         <div className="method-copy">
-          <h2>Method and limitations.</h2>
+          <h2>Method and sources</h2>
           <p>
-            “Low UV” means below 3. The annual band uses solar position and a published clear-sky UV formula with a fixed 300 DU ozone column. It assumes clean air, low ground reflection and near sea level, so snow, altitude, unusual ozone, medication and skin sensitivity can change your risk.
+            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and a sea-level baseline. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. Its bars are estimated hourly means; dots mark the highest available sample, not a measured hourly maximum.
           </p>
         </div>
         <div className="sources">

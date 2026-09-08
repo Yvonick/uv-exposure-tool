@@ -3,8 +3,8 @@ import './globals.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://uv-exposure-tool.yvonichou.chatgpt.site'),
-  title: 'UV Exposure Tool — UV data by location',
-  description: 'Live UV conditions and a clear-sky annual view of when sun protection is usually recommended.',
+  title: 'UV Exposure — yearly UV windows by location',
+  description: 'Explore yearly low-UV windows for any location, check current UV, and understand the effects of skin sensitivity, clouds, ground reflection, altitude and exposure time.',
   openGraph: {
     title: 'UV Exposure Tool',
     description: 'Live UV conditions, today’s UV timeline, and yearly low-UV windows for any location.',
