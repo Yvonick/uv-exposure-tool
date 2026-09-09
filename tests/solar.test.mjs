@@ -5,11 +5,34 @@ import { dailyModel, buildAnnualData, uvAtInstant, subsolarPoint, formatLowWindo
 import { project, unproject, nightPath, visibleLine } from '../lib/globe.ts';
 import { parseCoordinates, resolveCoordinates, lookupLocations, nearestPlace, resolveNearestPlace } from '../lib/locations.ts';
 import { standardErythemalDose } from '../lib/uv-dose.ts';
+import { daylightChartRange, daylightChartTicks } from '../lib/daylight-chart.ts';
 
 const berlin = { latitude: 52.5244, longitude: 13.4105, elevation: 74, timezone: 'Europe/Berlin' };
 const equator = { latitude: 0, longitude: 0, elevation: 0, timezone: 'UTC' };
 const date = (month, day) => new Date(Date.UTC(2026, month - 1, day, 12));
 const close = (a, b, tolerance = 1e-9) => assert.ok(Math.abs(a - b) <= tolerance, `${a} != ${b}`);
+
+test('live chart keeps daylight and one complete nighttime hour on either side', () => {
+  const range = daylightChartRange('2026-09-09', '2026-09-09T06:30', '2026-09-09T19:35');
+  assert.deepEqual(range, [5, 21]);
+  const visibleHours = Array.from({ length: 24 }, (_, hour) => hour).filter((hour) => hour >= range[0] && hour < range[1]);
+  assert.equal(visibleHours[0], 5);
+  assert.equal(visibleHours.at(-1), 20);
+  assert.deepEqual(daylightChartRange('2026-09-09', '2026-09-09T06:00', '2026-09-09T19:00'), [5, 20]);
+  assert.deepEqual(daylightChartRange('2026-06-21', '2026-06-21T00:30', '2026-06-21T23:40'), [0, 24]);
+  const ticks = daylightChartTicks(range);
+  assert.equal(ticks[0], range[0]);
+  assert.equal(ticks.at(-1), range[1]);
+  assert.ok(ticks.length <= 5 && ticks.every(Number.isInteger));
+});
+
+test('polar, midnight-spanning and unavailable sunrise data keep the full local day', () => {
+  for (const [rise, set] of [[null, null], [undefined, undefined], ['1970-01-01T00:00', '1970-01-01T00:00'],
+    ['2026-09-09T00:00', '2026-09-09T00:00'], ['2026-09-09T18:00', '2026-09-09T06:00'],
+    ['2026-09-08T06:00', '2026-09-08T18:00'], ['2026-09-09T25:00', '2026-09-09T18:00']]) {
+    assert.deepEqual(daylightChartRange('2026-09-09', rise, set), [0, 24]);
+  }
+});
 
 test('known equinox geometry and altitude increase peak and protection duration', () => {
   const low = dailyModel(equator, date(3, 20));

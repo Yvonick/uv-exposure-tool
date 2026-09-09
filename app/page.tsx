@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
+import { daylightChartRange, daylightChartTicks } from '@/lib/daylight-chart';
 import { buildAnnualData, formatHour, formatLowWindow, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
 import { DEFAULT_LOCATION, formatLocationLabel, lookupLocations, lookupLocation, resolveNearestPlace, type Location } from '@/lib/locations';
 import {
@@ -44,6 +45,7 @@ type CurrentUv = {
   clearSkyUv: number;
   isDay: boolean;
   day: DailyUvPoint[];
+  dayRange: [number, number];
   protectionStart: number | null;
   protectionEnd: number | null;
 };
@@ -74,6 +76,11 @@ type LiveUvResponse = {
 type DaylightResponse = {
   current?: {
     is_day?: number;
+  };
+  daily?: {
+    time: string[];
+    sunrise: Array<string | null>;
+    sunset: Array<string | null>;
   };
 };
 
@@ -362,6 +369,8 @@ export default function Home() {
           latitude: String(location.latitude),
           longitude: String(location.longitude),
           current: 'is_day',
+          daily: 'sunrise,sunset',
+          forecast_days: '2',
           timezone: 'auto',
         });
         const [response, daylight] = await Promise.all([
@@ -385,6 +394,7 @@ export default function Home() {
           throw new Error('UV service returned incomplete data');
         }
         const currentTime = data.current.time;
+        const daylightIndex = daylight?.daily?.time?.indexOf(currentTime.slice(0, 10)) ?? -1;
         const exposure = buildHourlyExposure(
           data.hourly.time,
           data.hourly.uv_index,
@@ -402,6 +412,7 @@ export default function Home() {
               ? false
               : data.current.uv_index_clear_sky > 0,
           day: exposure.points,
+          dayRange: daylightChartRange(currentTime.slice(0, 10), daylight?.daily?.sunrise?.[daylightIndex], daylight?.daily?.sunset?.[daylightIndex]),
           protectionStart: exposure.protectionStart,
           protectionEnd: exposure.protectionEnd,
         });
@@ -525,6 +536,8 @@ export default function Home() {
     : uvBand(current?.uv ?? 0);
   const todayScale = dailyUvScale(current?.day ?? []);
   const currentHour = current ? decimalHour(current.time) : 0;
+  const todayRange: [number, number] = current?.dayRange ?? [0, 24];
+  const todayPoints = (current?.day ?? []).filter((point) => point.startHour >= todayRange[0] && point.startHour < todayRange[1]);
 
   return (
     <main className="app-shell">
@@ -614,27 +627,28 @@ export default function Home() {
             </div>
             {current?.day.length ? (
               <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 440, height: 135 }}>
-                <ComposedChart data={current.day} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
+                <ComposedChart data={todayPoints} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
                   <ReferenceArea y1={0} y2={3} fill="#226047" fillOpacity={0.06} />
                   <ReferenceLine y={3} stroke="#226047" strokeOpacity={0.32} strokeDasharray="3 4" />
                   <XAxis
                     dataKey="midpoint"
                     type="number"
-                    domain={[0, 24]}
-                    ticks={[0, 6, 12, 18, 24]}
+                    domain={todayRange}
+                    ticks={daylightChartTicks(todayRange)}
+                    allowDataOverflow
                     tickFormatter={(value) => `${String(value).padStart(2, '0')}:00`}
                     axisLine={false}
                     tickLine={false}
                     tickMargin={10}
                   />
                   <YAxis domain={[0, todayScale.upper]} ticks={todayScale.ticks} axisLine={false} tickLine={false} minTickGap={12} />
-                  <ReferenceLine
+                  {currentHour >= todayRange[0] && currentHour <= todayRange[1] && <ReferenceLine
                     x={currentHour}
                     stroke="#226047"
                     strokeDasharray="3 4"
                     label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
-                  />
+                  />}
                   <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#9aafa3', strokeDasharray: '3 4' }} />
                   <Line type="monotone" dataKey="pastMeanUv" stroke="#507c67" strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
                   <Line type="monotone" dataKey="forecastMeanUv" stroke="#869c90" strokeWidth={2} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
@@ -746,7 +760,7 @@ export default function Home() {
         <div className="method-copy">
           <h2>Method and sources</h2>
           <p>
-            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.
+            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. It focuses on daylight, retaining one complete nighttime hour before sunrise and after sunset; polar conditions or unavailable sunrise/sunset times retain the full day. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.
           </p>
         </div>
         <div className="sources">
