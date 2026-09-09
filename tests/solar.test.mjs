@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { dailyModel, buildAnnualData, uvAtInstant, subsolarPoint, formatLowWindow, allDayLowSeason } from '../lib/solar.ts';
 import { project, unproject, nightPath, visibleLine } from '../lib/globe.ts';
-import { parseCoordinates, resolveCoordinates, lookupLocations } from '../lib/locations.ts';
+import { parseCoordinates, resolveCoordinates, lookupLocations, nearestPlace, resolveNearestPlace } from '../lib/locations.ts';
 import { standardErythemalDose } from '../lib/uv-dose.ts';
 
 const berlin = { latitude: 52.5244, longitude: 13.4105, elevation: 74, timezone: 'Europe/Berlin' };
@@ -31,6 +32,8 @@ test('Berlin seasons, leap year, local DST and eastward longitude', () => {
   close(dailyModel(equator, date(3, 20)).solarNoon - dailyModel({ ...equator, longitude: 15 }, date(3, 20)).solarNoon, 1);
   assert.equal(buildAnnualData(berlin, 2028).length, 366);
   assert.match(allDayLowSeason(buildAnnualData(berlin, 2026)), /Oct.*Mar/);
+  assert.equal(allDayLowSeason(buildAnnualData(equator, 2026)), 'No all-day low-UV season');
+  assert.equal(allDayLowSeason([{ start: null }, { start: null }]), 'Low UV all year');
 });
 
 test('polar and midnight-wrap windows partition the day without NaN', () => {
@@ -96,7 +99,58 @@ test('coordinate metadata preserves requested location and rejects stale or inco
 
 test('SED conversions and equal dose examples', () => {
   close(standardErythemalDose(3, 3), .135);
+  close(standardErythemalDose(3, 15), .675);
   close(standardErythemalDose(6, 30), 2.7);
   close(standardErythemalDose(3, 60), standardErythemalDose(6, 30));
   close(standardErythemalDose(12, 180), 32.4);
+});
+
+test('nearest named place handles the date line, poles and empty data', () => {
+  const acrossDateLine = ['Across', 'FJ', 0, -179.9];
+  assert.deepEqual(nearestPlace([['Farther', 'FJ', 0, 178], acrossDateLine], 0, 179.9).place, acrossDateLine);
+  close(nearestPlace([acrossDateLine], 0, 179.9).distanceKm, 22.239, .01);
+  const polar = ['Closer over pole', 'NO', 89.9, 180];
+  assert.deepEqual(nearestPlace([['South', 'NO', 88, 0], polar], 89.9, 0).place, polar);
+  assert.throws(() => nearestPlace([], 0, 0), /empty/);
+  assert.throws(() => nearestPlace([polar], 91, 0), /Invalid/);
+});
+
+test('bundled gazetteer resolves known city centers on several continents', () => {
+  const places = JSON.parse(readFileSync(new URL('../public/data/places.json', import.meta.url), 'utf8'));
+  assert.ok(places.length > 50000);
+  for (const [name, country, latitude, longitude] of [
+    ['Berlin', 'DE', 52.52437, 13.41053], ['Tokyo', 'JP', 35.6895, 139.69171],
+    ['Sydney', 'AU', -33.86785, 151.20732], ['Nairobi', 'KE', -1.28333, 36.81667],
+  ]) {
+    const result = nearestPlace(places, latitude, longitude);
+    assert.equal(result.place[0], name);
+    assert.equal(result.place[1], country);
+    assert.ok(result.distanceKm < 1);
+  }
+});
+
+test('globe lookup estimates at named coordinates and rejects cancelled results', async () => {
+  const originalFetch = globalThis.fetch;
+  let controller;
+  try {
+    globalThis.fetch = async (url) => {
+      if (url === '/data/places.json') return new Response(JSON.stringify([['Named town', 'FR', 46.321, 3.654]]));
+      const params = new URL(url).searchParams;
+      assert.equal(params.get('latitude'), '46.321');
+      assert.equal(params.get('longitude'), '3.654');
+      controller?.abort();
+      return new Response(JSON.stringify({ elevation: 456, timezone: 'Europe/Paris' }));
+    };
+    controller = new AbortController();
+    await assert.rejects(resolveNearestPlace(46, 3, controller.signal), { name: 'AbortError' });
+    controller = undefined;
+    const result = await resolveNearestPlace(46, 3);
+    assert.equal(result.name, 'Named town');
+    assert.equal(result.country, 'France');
+    assert.equal(result.latitude, 46.321);
+    assert.equal(result.longitude, 3.654);
+    assert.equal(result.elevation, 456);
+    assert.equal(result.timezone, 'Europe/Paris');
+    assert.ok(result.selectionDistanceKm > 50);
+  } finally { globalThis.fetch = originalFetch; }
 });

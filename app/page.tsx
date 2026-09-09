@@ -12,12 +12,11 @@ import {
 import {
   Area,
   AreaChart,
-  Bar,
+  Line,
   CartesianGrid,
-  ComposedChart,
+  LineChart,
   ReferenceArea,
   ReferenceLine,
-  Scatter,
   Tooltip,
   XAxis,
   YAxis,
@@ -28,7 +27,7 @@ import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
 import { buildAnnualData, formatHour, formatLowWindow, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
-import { DEFAULT_LOCATION, formatLocationLabel, lookupLocations, lookupLocation, resolveCoordinates, type Location } from '@/lib/locations';
+import { DEFAULT_LOCATION, formatLocationLabel, lookupLocations, lookupLocation, resolveNearestPlace, type Location } from '@/lib/locations';
 import {
   Combobox,
   ComboboxContent,
@@ -87,7 +86,6 @@ const chartConfig = {
 const todayChartConfig = {
   pastMeanUv: { label: 'Estimated hourly mean', color: '#5f5f5f' },
   forecastMeanUv: { label: 'Forecast hourly mean', color: '#c4c4c4' },
-  peakUv: { label: 'Highest sampled UV', color: '#226047' },
 } satisfies ChartConfig;
 
 const months = [
@@ -223,7 +221,7 @@ function buildHourlyExposure(
       label: `${formatHour(startHour)}–${formatHour(startHour + 1)}`,
       meanUv: area,
       pastMeanUv: phase === 'forecast' ? null : area,
-      forecastMeanUv: phase === 'forecast' ? area : null,
+      forecastMeanUv: phase !== 'past' ? area : null,
       peakUv,
       phase,
     } satisfies DailyUvPoint;
@@ -610,11 +608,11 @@ export default function Home() {
           <div className="live-timeline">
             <div className="day-chart-header">
               <p>Today</p>
-              <div className="day-legend"><span><i className="mean-bar" /> Past</span><span><i className="forecast-bar" /> Forecast</span></div>
+              <div className="day-legend"><span><i className="past-line" /> Past</span><span><i className="forecast-line" /> Forecast</span></div>
             </div>
             {current?.day.length ? (
               <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 440, height: 135 }}>
-                <ComposedChart data={current.day} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
+                <LineChart data={current.day} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
                   <ReferenceArea y1={0} y2={3} fill="#226047" fillOpacity={0.06} />
                   <ReferenceLine y={3} stroke="#226047" strokeOpacity={0.32} strokeDasharray="3 4" />
@@ -635,16 +633,15 @@ export default function Home() {
                     strokeDasharray="3 4"
                     label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />
-                  <Tooltip content={<DailyTooltip />} cursor={{ fill: '#eeeeee', fillOpacity: 0.55 }} />
-                  <Bar dataKey="pastMeanUv" stackId="mean" barSize={7} radius={[3, 3, 0, 0]} fill="#555555" isAnimationActive={false} />
-                  <Bar dataKey="forecastMeanUv" stackId="mean" barSize={7} radius={[3, 3, 0, 0]} fill="#c4c4c4" isAnimationActive={false} />
-                  <Scatter dataKey="peakUv" fill="#226047" isAnimationActive={false} />
-                </ComposedChart>
+                  <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#9aafa3', strokeDasharray: '3 4' }} />
+                  <Line type="monotone" dataKey="pastMeanUv" stroke="#507c67" strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
+                  <Line type="monotone" dataKey="forecastMeanUv" stroke="#869c90" strokeWidth={2} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
+                </LineChart>
               </ChartContainer>
             ) : (
               <div className="day-chart-empty">Hourly data unavailable</div>
             )}
-
+            <a className="live-source" href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">Data: Open-Meteo / CAMS ↗</a>
           </div>
         </section>
       </header>
@@ -657,7 +654,7 @@ export default function Home() {
           </div>
           <div className="year-stats">
             <div className="peak-stat"><span>Theoretical UV peak</span><strong>{peakPoint.maxUv.toFixed(1)}</strong><small>{peakPoint.date} · {year}</small></div>
-            <div className="peak-stat window-stat"><span>Low-UV window today</span><strong>{currentAnnualPoint ? formatLowWindow(currentAnnualPoint.lowWindows) : '—'}</strong><small>UVI below 3 · local time</small><small>Low all day: {lowSeason}</small></div>
+            <div className="peak-stat window-stat"><span>Low UV all day</span><strong>{lowSeason === 'Low UV all year' ? 'All year' : lowSeason === 'No all-day low-UV season' ? 'No period this year' : lowSeason}</strong><small>Theoretical UVI stays below 3 · {year}</small></div>
           </div>
         </div>
 
@@ -740,13 +737,13 @@ export default function Home() {
       </section>
 
       <UvFacts />
-      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveCoordinates(latitude, longitude, signal))} />
+      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveNearestPlace(latitude, longitude, signal))} />
 
       <section className="method-section" id="method">
         <div className="method-copy">
           <h2>Method and sources</h2>
           <p>
-            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. Its bars are estimated hourly means; dots mark the highest available sample, not a measured hourly maximum.
+            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Earlier values are model estimates, not measurements.
           </p>
         </div>
         <div className="sources">
@@ -760,7 +757,7 @@ export default function Home() {
 
       <footer>
         <a className="brand footer-brand" href="#top"><span>UV EXPOSURE TOOL</span></a>
-        <p>Data: Open-Meteo · {year}</p>
+        <p>{year}</p>
       </footer>
     </main>
   );

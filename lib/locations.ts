@@ -1,5 +1,6 @@
 export type Location = {
   name: string; country: string; admin1?: string; latitude: number; longitude: number; timezone: string; elevation: number;
+  selectionDistanceKm?: number;
 };
 export const DEFAULT_LOCATION: Location = {
   name: 'Berlin', country: 'Germany', admin1: 'Berlin', latitude: 52.5244, longitude: 13.4105, timezone: 'Europe/Berlin', elevation: 74,
@@ -54,4 +55,42 @@ export async function lookupLocation(query: string, signal?: AbortSignal): Promi
   const [location] = await lookupLocations(query, 1, signal);
   if (!location) throw new Error('No matching place found. Try a city and country, or latitude, longitude.');
   return location;
+}
+
+export type NamedPlace = [name: string, countryCode: string, latitude: number, longitude: number];
+let placeIndex: NamedPlace[] | undefined;
+
+export function nearestPlace(places: NamedPlace[], latitude: number, longitude: number) {
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) throw new Error('Invalid coordinates.');
+  const radians = Math.PI / 180;
+  let nearest: NamedPlace | undefined, minimum = Infinity;
+  for (const place of places) {
+    // Haversine distance remains correct across the date line and near the poles.
+    const distance = Math.sin((place[2] - latitude) * radians / 2) ** 2
+      + Math.cos(latitude * radians) * Math.cos(place[2] * radians)
+      * Math.sin((place[3] - longitude) * radians / 2) ** 2;
+    if (distance < minimum) { minimum = distance; nearest = place; }
+  }
+  if (!nearest) throw new Error('The place index is empty. Please try the location search.');
+  return { place: nearest, distanceKm: 6371.0088 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, minimum)))) };
+}
+
+export async function resolveNearestPlace(latitude: number, longitude: number, signal?: AbortSignal): Promise<Location> {
+  signal?.throwIfAborted();
+  if (!placeIndex) {
+    const response = await fetch('/data/places.json', { signal });
+    if (!response.ok) throw new Error('Could not load place names. Please try again or use the location search.');
+    const data = await response.json() as NamedPlace[];
+    signal?.throwIfAborted();
+    if (!Array.isArray(data) || !data.length || data.some((place) => !Array.isArray(place)
+      || typeof place[0] !== 'string' || !/^[A-Z]{2}$/.test(place[1])
+      || !Number.isFinite(place[2]) || Math.abs(place[2]) > 90
+      || !Number.isFinite(place[3]) || Math.abs(place[3]) > 180)) throw new Error('The place index is unavailable. Please use the location search.');
+    placeIndex = data;
+  }
+  const { place, distanceKm } = nearestPlace(placeIndex, latitude, longitude);
+  // Resolve metadata at the named place, never relabel the original clicked point.
+  const metadata = await resolveCoordinates(place[2], place[3], signal);
+  signal?.throwIfAborted();
+  return { ...metadata, name: place[0], country: new Intl.DisplayNames(['en'], { type: 'region' }).of(place[1]) ?? place[1], selectionDistanceKm: distanceKm };
 }

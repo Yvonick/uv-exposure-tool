@@ -6,11 +6,11 @@ UV Exposure Tool is a yearly UV planner for any location:
 - What is the UV index right now, with a compact view of today's modelled conditions?
 - How do skin sensitivity, clouds, ground reflection, latitude, seasons and duration affect UV exposure?
 
-Location search supports city/place names and decimal latitude, longitude (for example `52.52, 13.41`). Geocoding retains elevation and timezone; coordinate selection resolves those together before updating the page. Failed or superseded lookups preserve the last valid location. Compact live conditions appear alongside the search; the annual chart is the first full-width section, with theoretical peak and today's low-UV hours.
+Location search supports city/place names and decimal latitude, longitude (for example `52.52, 13.41`). Geocoding retains elevation and timezone; coordinate selection resolves those together before updating the page. Failed or superseded lookups preserve the last valid location. Compact live conditions and a line chart appear alongside the search, with the Open-Meteo / CAMS credit in that section. The line connects estimated hourly means, with a dashed current/forecast portion. The annual chart is the first full-width section, with theoretical peak and the period when UV stays below 3 all day (or no such period).
 
-Four sections follow the annual chart. The skin chart combines UV/time controls, characteristic first-redness ranges and a shared 1 SED daily reference. It does not predict an individual's threshold or change the UVI 3 guidance. The short sky section gives observed cloud metrics; reflection is shown as ranges and open bounds. Expandable regional sources distinguish agreement on broad effects from variation in numerical estimates.
+Four sections follow the annual chart. The skin chart combines UV/time controls (default UVI 3 for 15 minutes), characteristic first-redness ranges and a shared 1 SED daily reference. It does not predict an individual's threshold or change the UVI 3 guidance. The short sky section gives observed cloud metrics; reflection bars run from zero to the maximum, with hatching over the published range. Expandable sources use agency/author names and distinguish agreement on broad effects from variation in numerical estimates. JMA's documented 40–50% UVI enhancement over extensive snowfields is illustrated as UVI 3 → 4.2–4.5; it is not applied as a correction to live values.
 
-The globe has date and UTC-time sliders, day/night shading and parallel sun rays. Drag or use arrow keys/buttons to rotate; click a point (or press Enter at the center) to update the shared location. Results show instantaneous theoretical UV, the local day's maximum, and local low-UV hours. Its coastline outline is public-domain Natural Earth data; elevation comes from Copernicus / Open-Meteo. The globe and annual chart share the same solar and altitude model, including polar and midnight-wrapping cases.
+The globe has date and UTC-time sliders, day/night shading and parallel sun rays. Drag or use arrow keys/buttons to rotate; click a point (or press Enter at the center) to select the nearest named place in a locally bundled GeoNames cities5000 index. The 69,700-place index loads only on the first selection and is reused. It covers towns/cities over 5,000 people and selected administrative seats, rather than every village or landmark. The page shows country, elevation and distance from the click, and calculates at the named place's coordinates. Results show instantaneous theoretical UV, the local day's maximum, and local low-UV hours. Its coastline outline is public-domain Natural Earth data; elevation comes from Copernicus / Open-Meteo. Place-data attribution, license and regeneration instructions are in `public/data/README.md`. The globe and annual chart share the same solar and altitude model, including polar and midnight-wrapping cases.
 
 Dose is calculated as UV Index × minutes × 0.015 standard erythemal doses (SED), using 1 SED = 100 erythemally weighted J/m². The 1 SED daily reference is attributed to ARPANSA and is not scaled by phototype. It is not a per-outing allowance or a no-damage boundary. The calculator does not track a user's accumulated daily dose. Surface reflectance ranges are not personal exposure multipliers or statistical confidence intervals.
 
@@ -62,8 +62,10 @@ npm run build
 - [NOAA: solar-position equations](https://gml.noaa.gov/grad/solcalc/solareqns.PDF)
 - [Copernicus / Open-Meteo: terrain elevation](https://open-meteo.com/en/docs/elevation-api)
 - [Natural Earth: public-domain map data](https://www.naturalearthdata.com/about/terms-of-use/)
+- [GeoNames: populated places, CC BY 4.0](https://download.geonames.org/export/dump/)
+- [Japan Meteorological Agency: reflection and UV Index enhancement](https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-76uvindex_mini.html)
 
-Evidence reviewed 8 September 2026. Source links and specific findings are also available beside each section on the page.
+Evidence reviewed 9 September 2026. Source links and specific findings are also available beside each section on the page.
 
 ## Model checks
 
@@ -71,7 +73,7 @@ Evidence reviewed 8 September 2026. Source links and specific findings are also 
 node --experimental-strip-types --test tests/solar.test.mjs
 ```
 
-Checks cover equinox geometry, altitude effects, DST, leap years, polar and midnight-wrapping windows, globe projection, coordinate metadata and dose conversion.
+Checks cover equinox geometry, altitude effects, DST, leap years, polar and midnight-wrapping windows, globe projection, nearest-place lookup across the date line/poles, real gazetteer entries, coordinate metadata, cancellation and dose conversion.
 
 ## Status
 

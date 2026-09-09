@@ -95,7 +95,7 @@ export default function SolarGlobe({ location, year, onPick }: {
           <div><div className="slider-heading"><label id="globe-time-label">Time (UTC)</label><output>{String(Math.floor(utcMinutes / 60)).padStart(2, '0')}:{String(utcMinutes % 60).padStart(2, '0')}</output></div><Slider aria-labelledby="globe-time-label" value={[utcMinutes]} onValueChange={(value) => setUtcMinutes(Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
         </div>
         <div className="globe-layout">
-          <div>
+          <div className="globe-stage">
             <svg className="solar-globe" viewBox="0 0 600 600" role="application" aria-label="Interactive globe. Drag to rotate, click to select. Arrow keys rotate; Enter selects the center." tabIndex={0} onKeyDown={keyboard}
               onPointerDown={(event) => { if (!pointAt(event)) return; drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
               onPointerMove={move} onPointerCancel={() => { drag.current = null; }}
@@ -103,6 +103,7 @@ export default function SolarGlobe({ location, year, onPick }: {
               <defs><radialGradient id="ocean"><stop offset="0" stopColor="#edf5f0" /><stop offset="1" stopColor="#b9d6cb" /></radialGradient><clipPath id="earth-disk"><circle cx={CENTER} cy={CENTER} r={RADIUS} /></clipPath><marker id="sun-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0L6,3L0,6Z" fill="#c19a4d" /></marker></defs>
               {sideSun && <g transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} aria-hidden="true"><circle cx="264" cy="0" r="13" fill="#e6bb69" />{[-60, -30, 0, 30, 60].map((offset) => <line key={offset} x1="237" x2={Math.sqrt(RADIUS ** 2 - offset ** 2) + 4} y1={offset} y2={offset} stroke="#c19a4d" strokeWidth="1.5" markerEnd="url(#sun-arrow)" />)}</g>}
               <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="url(#ocean)" stroke="#6b9484" />
+              <circle className="globe-focus" cx={CENTER} cy={CENTER} r={RADIUS + 9} aria-hidden="true" />
               <g clipPath="url(#earth-disk)" aria-hidden="true"><path d={grid} fill="none" stroke="#729686" strokeWidth=".65" opacity=".5" /><path d={outline} fill="none" stroke="#3c705b" strokeWidth="1.2" strokeLinejoin="round" /><path d={nightPath(sun)} transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="#182d3c" opacity=".65" /></g>
               {[60, 30, 0, -30, -60].map((latitude) => { const p = project({ latitude, longitude: view.longitude }, view); return p.z > .2 ? <text key={latitude} x={CENTER + 7} y={CENTER - RADIUS * p.y - 5} className="globe-latitude" aria-hidden="true">{latitude === 0 ? 'Equator' : `${Math.abs(latitude)}°${latitude > 0 ? 'N' : 'S'}`}</text> : null; })}
               {marker.z >= 0 && <g aria-hidden="true"><circle cx={CENTER + RADIUS * marker.x} cy={CENTER - RADIUS * marker.y} r="6" fill={picking ? '#b48439' : '#ae553a'} stroke="#fff" strokeWidth="2" /></g>}
@@ -110,18 +111,24 @@ export default function SolarGlobe({ location, year, onPick }: {
               {!sideSun && <text x="300" y="70" textAnchor="middle" className="globe-sun-caption">{sun.z > 0 ? 'Sunlight from the viewer’s direction' : 'Sunlight from behind the globe'}</text>}
             </svg>
             <div className="globe-navigation"><button type="button" onClick={() => setView((v) => ({ ...v, longitude: wrapLongitude(v.longitude - 45) }))} aria-label="Rotate globe west">←</button><span>Drag to rotate · click a place</span><button type="button" onClick={() => setView((v) => ({ ...v, longitude: wrapLongitude(v.longitude + 45) }))} aria-label="Rotate globe east">→</button></div>
-            {mapError && <p className="fact-note">Coastlines could not load. Coordinates can still be selected.</p>}
+            {mapError && <p className="fact-note">Coastlines could not load. Place selection still works.</p>}
           </div>
           <div className="globe-results" aria-live="polite" aria-busy={picking}>
-            <p className="globe-place">{location.name}</p><p className="globe-local">{localLabel} · local time</p>
-            {picking && <p className="fact-note">Resolving elevation and local time…</p>}
+            <div className="globe-location">
+              <p className="globe-place">{location.name}</p>
+              <p className="globe-place-meta">{[location.country, `${Math.round(location.elevation).toLocaleString('en')} m elevation`].filter(Boolean).join(' · ')}</p>
+              <p className="globe-local">{localLabel} · local time</p>
+              {location.selectionDistanceKm !== undefined && <p className="globe-selection-note">Nearest mapped place · {location.selectionDistanceKm < 1 ? 'less than 1' : Math.round(location.selectionDistanceKm).toLocaleString('en')} km from your selection</p>}
+            </div>
+            {picking && <p className="fact-note globe-status">Finding the nearest town and its elevation…</p>}
             {pickError && <p className="globe-error" role="alert">{pickError}</p>}
             <div className="peak-stat"><span>Theoretical UV now</span><strong>{currentUv.toFixed(1)}</strong></div>
             <div className="peak-stat"><span>Theoretical UV peak</span><strong>{result.maxUv.toFixed(1)}</strong><small>Selected local day</small></div>
             <div className="peak-stat window-stat"><span>Low-UV window</span><strong>{formatLowWindow(result.lowWindows)}</strong><small>UVI below 3 · local time</small></div>
           </div>
         </div>
-        <p className="fact-note">Direct rays produce stronger UV than grazing rays. Elevation {Math.round(location.elevation)} m · UV adjustment {location.elevation >= 0 ? '+' : ''}{(location.elevation / 100).toFixed(1)}% (about +10% per km). Clear sky, fixed ozone; low UV does not mean zero risk.</p>
+        <p className="fact-note">Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.</p>
+        <p className="fact-note globe-index-note">Globe selections use the nearest place in <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>’ town and city index. Results apply to that place; small villages and landmarks may be absent. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.</p>
         <details className="evidence"><summary>Sources and model</summary><div className="evidence-content"><p className="fact-note">Solar geometry: <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">NOAA</a>. UV: <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich</a>. Altitude: <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">WHO</a> and <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">JMA</a> give approximate rules; actual mountain conditions vary. Elevation: <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo</a>. Coastlines: <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">Natural Earth, public domain</a>. The globe’s clock is UTC; results use the selected place’s local date and time. Dates use the {year} calendar.</p></div></details>
       </div>
     </section>
