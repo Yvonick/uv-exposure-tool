@@ -2,6 +2,7 @@ export type SolarLocation = { latitude: number; longitude: number; elevation: nu
 export type Interval = [number, number];
 export type DailyModel = {
   maxUv: number; solarNoon: number; protectionWindows: Interval[]; lowWindows: Interval[];
+  daylightIncidence: { min: number; max: number } | null;
 };
 export type AnnualPoint = DailyModel & {
   day: number; date: string; base: number; protection: number; secondBase: number; secondProtection: number;
@@ -36,6 +37,29 @@ export function timezoneOffsetMinutes(date: Date, timezone: string) {
   return (asUtc - Math.floor(date.getTime() / 60000) * 60000) / 60000;
 }
 
+// The returned date encodes local calendar fields at UTC noon, not an instant.
+export function localCalendarTime(instant: Date, timezone: string) {
+  const wallClock = new Date(instant.getTime() + timezoneOffsetMinutes(instant, timezone) * 60_000);
+  return {
+    date: new Date(Date.UTC(wallClock.getUTCFullYear(), wallClock.getUTCMonth(), wallClock.getUTCDate(), 12)),
+    minutes: wallClock.getUTCHours() * 60 + wallClock.getUTCMinutes(),
+  };
+}
+
+// Resolve civil time with the offsets on both sides of a possible clock change.
+// Repeated times choose the earlier occurrence; missing times shift forward by the gap.
+export function localDateTimeToInstant(date: Date, minutes: number, timezone: string) {
+  const wallTime = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, minutes);
+  const offsets = new Set([-36, 0, 36].map((hours) => timezoneOffsetMinutes(new Date(wallTime + hours * 3_600_000), timezone)));
+  const candidates = [...offsets].map((offset) => {
+    const instant = new Date(wallTime - offset * 60_000);
+    return { instant, shift: instant.getTime() + timezoneOffsetMinutes(instant, timezone) * 60_000 - wallTime };
+  });
+  const exact = candidates.filter(({ shift }) => shift === 0).sort((a, b) => a.instant.getTime() - b.instant.getTime());
+  if (exact.length) return exact[0].instant;
+  return candidates.filter(({ shift }) => shift > 0).sort((a, b) => a.shift - b.shift)[0].instant;
+}
+
 export function subsolarPoint(date: Date) {
   const { declination, equationOfTime } = solarTerms(date);
   return {
@@ -44,12 +68,22 @@ export function subsolarPoint(date: Date) {
   };
 }
 
-export function uvAtInstant(location: SolarLocation, date: Date) {
+function solarCosine(location: Pick<SolarLocation, 'latitude' | 'longitude'>, date: Date) {
   const sun = subsolarPoint(date);
   const phi = location.latitude * radians;
   const dec = sun.latitude * radians;
-  const cosine = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos((location.longitude - sun.longitude) * radians);
-  return 12.5 * altitudeFactor(location.elevation) * Math.max(0, cosine) ** 2.42;
+  return Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos((location.longitude - sun.longitude) * radians);
+}
+
+// Incidence on horizontal ground = solar zenith: 0° overhead, 90° at the horizon.
+// A below-horizon sun has no direct sunlight incidence. Refraction is not included.
+export function incidenceAtInstant(location: Pick<SolarLocation, 'latitude' | 'longitude'>, date: Date) {
+  const cosine = solarCosine(location, date);
+  return cosine < -1e-12 ? null : Math.acos(Math.max(0, Math.min(1, cosine))) / radians;
+}
+
+export function uvAtInstant(location: SolarLocation, date: Date) {
+  return 12.5 * altitudeFactor(location.elevation) * Math.max(0, solarCosine(location, date)) ** 2.42;
 }
 
 // date encodes the selected local calendar day at UTC noon. Times are local civil hours.
@@ -61,9 +95,13 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
   const scale = 12.5 * altitudeFactor(location.elevation);
   const maxUv = scale * Math.max(0, a + b) ** 2.42;
   const minUv = scale * Math.max(0, a - b) ** 2.42;
+  const daylightIncidence = a + b <= 1e-12 ? null : {
+    min: Math.acos(Math.max(0, Math.min(1, a + b))) / radians,
+    max: Math.acos(Math.max(0, Math.min(1, a - b))) / radians,
+  };
   const solarNoon = ((720 - 4 * location.longitude - equationOfTime + timezoneOffsetMinutes(date, location.timezone)) / 60 % 24 + 24) % 24;
-  if (maxUv < 3) return { maxUv, solarNoon, protectionWindows: [], lowWindows: [[0, 24]] };
-  if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, protectionWindows: [[0, 24]], lowWindows: [] };
+  if (maxUv < 3) return { maxUv, solarNoon, daylightIncidence, protectionWindows: [], lowWindows: [[0, 24]] };
+  if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, daylightIncidence, protectionWindows: [[0, 24]], lowWindows: [] };
   const cosine = Math.max(-1, Math.min(1, ((3 / scale) ** (1 / 2.42) - a) / b));
   const halfWidth = Math.acos(cosine) * 12 / Math.PI;
   const protectionWindows: Interval[] = [];
@@ -80,7 +118,7 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
     previous = end;
   }
   if (previous < 24) lowWindows.push([previous, 24]);
-  return { maxUv, solarNoon, protectionWindows, lowWindows };
+  return { maxUv, solarNoon, daylightIncidence, protectionWindows, lowWindows };
 }
 
 export function buildAnnualData(location: SolarLocation, year: number, locale = 'en'): AnnualPoint[] {

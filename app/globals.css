@@ -452,6 +452,7 @@ footer p { margin: 0; }
 .globe-results .peak-stat strong { font-size: 2rem; letter-spacing: -.025em; font-weight: 600; }
 .globe-results .window-stat strong { font-size: 1.1rem; line-height: 1.5; margin-top: .35rem; }
 .globe-results .peak-stat small { text-transform: none; letter-spacing: 0; font-size: .75rem; }
+.globe-results .nighttime-stat strong { font-size: 1.1rem; line-height: 1.5; }
 .globe-error { color: #963f2f; font-size: .8125rem; }
 .globe-index-note { font-size: .75rem; }
 .globe-location, .globe-status { grid-column: 1 / -1; }

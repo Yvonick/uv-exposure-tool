@@ -246,6 +246,8 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
         {lowWindow(point.lowWindows)} · {t('UVI below 3')}
       </p>
       <p className="chart-tooltip-note">{t('Theoretical UV peak')} · {number(point.maxUv, 1)} {t("UVI")}</p>
+      <p className="chart-tooltip-note">{t('Daylight incidence angle')} · {point.daylightIncidence ? t('min {min}° · max {max}°', { min: number(point.daylightIncidence.min, 1), max: number(point.daylightIncidence.max, 1) }) : t('No daylight')}</p>
+      <p className="chart-tooltip-note">{t('0° overhead · 90° at the horizon')}</p>
     </FloatingChartTooltip>
   );
 }
@@ -760,6 +762,7 @@ export default function Dashboard() {
           <p> {t("The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. It focuses on daylight, retaining one complete nighttime hour before sunrise and after sunset; polar conditions or unavailable sunrise/sunset times retain the full day. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.")} </p>
         </div>
         <div className="sources">
+          <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">{t("NOAA · solar angles")} <ArrowRight /></a>
 
           <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">{t("WHO · UV Index guidance")} <ArrowRight /></a>
           <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich · clear-sky formula")} <ArrowRight /></a>

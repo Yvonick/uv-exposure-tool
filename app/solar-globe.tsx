@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { type Location } from '@/lib/locations';
-import { dailyModel, daysInYear, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
+import { dailyModel, daysInYear, formatHour, incidenceAtInstant, localCalendarTime, localDateTimeToInstant, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
 import { project, unproject, visibleLine, nightPath, type GeoPoint } from '@/lib/globe';
 import { useLanguage } from './language';
 
@@ -14,8 +14,10 @@ export default function SolarGlobe({ location, year, onPick }: {
   location: Location; year: number; onPick: (latitude: number, longitude: number) => Promise<Location>;
 }) {
   const { locale, t, number, lowWindow } = useLanguage();
-  const [day, setDay] = useState(() => Math.floor((Date.now() - Date.UTC(year, 0, 1)) / 86_400_000));
-  const [utcMinutes, setUtcMinutes] = useState(720);
+  const [selection, setSelection] = useState(() => ({
+    day: Math.floor((localCalendarTime(new Date(), location.timezone).date.getTime() - Date.UTC(year, 0, 1)) / 86_400_000),
+    minutes: 720,
+  }));
   const [view, setView] = useState<GeoPoint>({ latitude: 20, longitude: location.longitude });
   const [lines, setLines] = useState<GeoPoint[][]>([]);
   const [mapError, setMapError] = useState(false);
@@ -40,14 +42,25 @@ export default function SolarGlobe({ location, year, onPick }: {
     return () => controller.abort();
   }, []);
 
-  const selectedDay = Math.max(0, Math.min(daysInYear(year) - 1, day));
-  const instant = useMemo(() => new Date(Date.UTC(year, 0, selectedDay + 1, 0, utcMinutes)), [year, selectedDay, utcMinutes]);
-  const calendarParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: location.timezone, year: 'numeric', month: 'numeric', day: 'numeric' }).formatToParts(instant).map((part) => [part.type, part.value]));
-  const localDate = new Date(Date.UTC(+calendarParts.year, +calendarParts.month - 1, +calendarParts.day, 12));
+  const requestedDay = Math.max(0, Math.min(daysInYear(year) - 1, selection.day));
+  const instant = useMemo(() => localDateTimeToInstant(new Date(Date.UTC(year, 0, requestedDay + 1, 12)), selection.minutes, location.timezone), [year, requestedDay, selection.minutes, location.timezone]);
+  const { date: localDate, minutes: localMinutes } = localCalendarTime(instant, location.timezone);
+  const selectedDay = Math.floor((localDate.getTime() - Date.UTC(year, 0, 1)) / 86_400_000);
   const result = dailyModel(location, localDate);
   const currentUv = uvAtInstant(location, instant);
+  const incidence = incidenceAtInstant(location, instant);
   const localLabel = new Intl.DateTimeFormat(locale, { timeZone: location.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(instant);
-  const dateLabel = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(instant);
+  const dateLabel = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(localDate);
+
+  function updateSelection(day: number, minutes: number) {
+    const date = new Date(Date.UTC(year, 0, day + 1, 12));
+    let resolved = localCalendarTime(localDateTimeToInstant(date, minutes, location.timezone), location.timezone);
+    // Skip a missing clock hour in the direction of slider travel, including 30-minute gaps.
+    if (day === selectedDay && minutes < localMinutes && resolved.minutes > minutes) {
+      resolved = localCalendarTime(localDateTimeToInstant(date, minutes - (resolved.minutes - minutes), location.timezone), location.timezone);
+    }
+    setSelection({ day: Math.floor((resolved.date.getTime() - Date.UTC(year, 0, 1)) / 86_400_000), minutes: resolved.minutes });
+  }
   const sun = project(subsolarPoint(instant), view);
   // Keep SVG serialization stable across server and browser math implementations.
   const sunAngle = Number((Math.atan2(-sun.y, sun.x) * 180 / Math.PI).toFixed(6));
@@ -94,8 +107,8 @@ export default function SolarGlobe({ location, year, onPick }: {
       <div className="fact-heading"><h2 id="globe-title">{t("Latitude and sunlight")}</h2></div>
       <div className="fact-content">
         <div className="globe-controls">
-          <div><div className="slider-heading"><label id="globe-date-label">{t("Date")}</label><output>{dateLabel}</output></div><Slider aria-labelledby="globe-date-label" value={[selectedDay]} onValueChange={(value) => setDay(Array.isArray(value) ? value[0] : value)} min={0} max={daysInYear(year) - 1} step={1} /><div className="slider-endpoints"><span>{t("Jan 1")}</span><span>{t("Dec 31")}</span></div></div>
-          <div><div className="slider-heading"><label id="globe-time-label">{t("Time (UTC)")}</label><output>{String(Math.floor(utcMinutes / 60)).padStart(2, '0')}:{String(utcMinutes % 60).padStart(2, '0')}</output></div><Slider aria-labelledby="globe-time-label" value={[utcMinutes]} onValueChange={(value) => setUtcMinutes(Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
+          <div><div className="slider-heading"><label id="globe-date-label">{t("Date")}</label><output>{dateLabel}</output></div><Slider aria-labelledby="globe-date-label" aria-valuetext={dateLabel} value={[selectedDay]} onValueChange={(value) => updateSelection(Array.isArray(value) ? value[0] : value, localMinutes)} min={0} max={daysInYear(year) - 1} step={1} /><div className="slider-endpoints"><span>{t("Jan 1")}</span><span>{t("Dec 31")}</span></div></div>
+          <div><div className="slider-heading"><label id="globe-time-label">{t("Local time")}</label><output>{formatHour(localMinutes / 60)}</output></div><Slider aria-labelledby="globe-time-label" aria-valuetext={formatHour(localMinutes / 60)} value={[localMinutes]} onValueChange={(value) => updateSelection(selectedDay, Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
         </div>
         <div className="globe-layout">
           <div className="globe-stage">
@@ -124,15 +137,17 @@ export default function SolarGlobe({ location, year, onPick }: {
             </div>
             {picking && <p className="fact-note globe-status">{t("Finding the nearest town and its elevation…")}</p>}
             {pickError && <p className="globe-error" role="alert">{t(pickError)}</p>}
-            <div className="peak-stat"><span>{t("Theoretical UV now")}</span><strong>{number(currentUv, 1)}</strong></div>
+            <div className="peak-stat"><span>{t("Theoretical UV at the chosen time")}</span><strong>{number(currentUv, 1)}</strong></div>
+            <div className={`peak-stat incidence-stat${incidence === null ? ' nighttime-stat' : ''}`}><span>{t("Incidence angle")}</span><strong>{incidence === null ? t('Sun below the horizon') : `${number(incidence, 1)}°`}</strong><small>{t("0° overhead · 90° at the horizon")}</small></div>
             <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(result.maxUv, 1)}</strong><small>{t("Selected local day")}</small></div>
-            <div className="peak-stat window-stat"><span>{t("Low-UV window")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t("UVI below 3 · local time")}</small></div>
+            <div className="peak-stat window-stat"><span>{t("Low-UV window on the chosen date")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t("UVI below 3 · local time")}</small></div>
           </div>
         </div>
         <details className="evidence"><summary>{t("Sources and model")}</summary><div className="evidence-content">
+        <p className="fact-note">{t("Incidence is measured from the vertical on horizontal ground (solar zenith angle): 0° overhead, 90° at the horizon. The annual minimum and maximum cover daylight only, using the day’s fixed solar declination. Terrain slope and atmospheric refraction are not included.")} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a></p>
         <p className="fact-note">{t("Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.")}</p>
         <p className="fact-note globe-index-note">{t("Globe selections use the nearest place in")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">{t("GeoNames")}</a>{t("’ town and city index. Results apply to that place; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a>.</p>
-        <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t('The globe’s clock is UTC; results use the selected place’s local date and time. Dates use the {year} calendar.', { year })}</p></div></details>
+        <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t('The date and time controls use the selected place’s local time, including daylight saving. Missing clock times are skipped; repeated times use their first occurrence. Dates use the {year} calendar.', { year })}</p></div></details>
       </div>
     </section>
   );
