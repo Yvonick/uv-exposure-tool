@@ -27,6 +27,7 @@ import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
+import { ChartHoverSurface, FloatingChartTooltip } from './chart-hover';
 import { daylightChartRange, daylightChartTicks } from '@/lib/daylight-chart';
 import { buildAnnualData, formatHour, formatLowWindow, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
 import { DEFAULT_LOCATION, formatLocationLabel, lookupLocations, lookupLocation, resolveNearestPlace, type Location } from '@/lib/locations';
@@ -251,13 +252,13 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
   if (!active || !point) return null;
 
   return (
-    <div className="chart-tooltip">
+    <FloatingChartTooltip>
       <p className="chart-tooltip-date">{point.date}</p>
       <p className="chart-tooltip-main">
         {formatLowWindow(point.lowWindows)} · UVI below 3
       </p>
       <p className="chart-tooltip-note">Theoretical UV peak · {point.maxUv.toFixed(1)} UVI</p>
-    </div>
+    </FloatingChartTooltip>
   );
 }
 
@@ -266,14 +267,14 @@ function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   if (!active || !point) return null;
 
   return (
-    <div className="chart-tooltip daily-tooltip">
+    <FloatingChartTooltip className="daily-tooltip">
       <p className="chart-tooltip-date">{point.label}</p>
       <p className="chart-tooltip-main">Estimated mean · {point.meanUv.toFixed(1)} UVI</p>
       <p className="chart-tooltip-note">Highest sampled · {point.peakUv.toFixed(1)} UVI</p>
       <p className="chart-tooltip-note">
         {point.phase === 'past' ? 'Completed hour' : point.phase === 'current' ? 'Current hour' : 'Forecast hour'}
       </p>
-    </div>
+    </FloatingChartTooltip>
   );
 }
 
@@ -626,6 +627,7 @@ export default function Home() {
               <div className="day-legend"><span><i className="past-line" /> Past</span><span><i className="forecast-line" /> Forecast</span><span><i className="peak-dot" /> Highest sample</span></div>
             </div>
             {current?.day.length ? (
+              <ChartHoverSurface>
               <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 440, height: 135 }}>
                 <ComposedChart data={todayPoints} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
@@ -649,12 +651,13 @@ export default function Home() {
                     strokeDasharray="3 4"
                     label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />}
-                  <Tooltip content={<DailyTooltip />} cursor={{ stroke: '#9aafa3', strokeDasharray: '3 4' }} />
+                  <Tooltip content={<DailyTooltip />} isAnimationActive={false} wrapperStyle={{ pointerEvents: 'none' }} cursor={{ stroke: '#9aafa3', strokeDasharray: '3 4' }} />
                   <Line type="monotone" dataKey="pastMeanUv" stroke="#507c67" strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
                   <Line type="monotone" dataKey="forecastMeanUv" stroke="#869c90" strokeWidth={2} strokeDasharray="4 3" dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
                   <Scatter dataKey="peakUv" fill="#226047" isAnimationActive={false} />
                 </ComposedChart>
               </ChartContainer>
+              </ChartHoverSurface>
             ) : (
               <div className="day-chart-empty">Hourly data unavailable</div>
             )}
@@ -681,6 +684,7 @@ export default function Home() {
             <span><i className="legend-protect" /> Protection recommended · UVI 3+</span>
           </div>
           <div className="chart-scroll">
+            <ChartHoverSurface>
             <ChartContainer config={chartConfig} className="annual-chart" initialDimension={{ width: 980, height: 400 }}>
               <AreaChart data={annualData} margin={{ top: 18, right: 12, bottom: 10, left: 0 }}>
                 <defs>
@@ -732,7 +736,7 @@ export default function Home() {
                     strokeDasharray="3 4"
                   />
                 )}
-                <Tooltip content={<AnnualTooltip />} cursor={{ stroke: '#226047', strokeWidth: 1 }} />
+                <Tooltip content={<AnnualTooltip />} isAnimationActive={false} wrapperStyle={{ pointerEvents: 'none' }} cursor={{ stroke: '#226047', strokeWidth: 1 }} />
                 <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
                 <Area
                   dataKey="protection"
@@ -745,6 +749,7 @@ export default function Home() {
                 <Area dataKey="secondProtection" stackId="second" stroke="none" fill="url(#protectFill)" isAnimationActive={false} />
               </AreaChart>
             </ChartContainer>
+            </ChartHoverSurface>
           </div>
           <div className="chart-caption">
             <p>Theoretical daily windows · clear sky · {Math.round(location.elevation)} m. <a href="#method">Method</a></p>

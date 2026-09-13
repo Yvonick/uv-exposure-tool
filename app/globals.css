@@ -437,11 +437,6 @@ footer p { margin: 0; }
 .solar-globe:focus-visible .globe-focus { opacity: 1; }
 .globe-latitude { font-size: 11px; fill: #345d48; paint-order: stroke; stroke: #eaf4ed; stroke-width: 2px; stroke-linejoin: round; }
 .globe-sun-caption { fill: #80682f; font-size: 12px; }
-.globe-navigation { display: flex; align-items: center; justify-content: center; gap: .8rem; color: var(--muted-foreground); font-size: .8125rem; padding-top: .25rem; }
-.globe-navigation span { text-align: center; line-height: 1.5; }
-.globe-navigation button { min-width: 2.75rem; min-height: 2.75rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--card); color: var(--primary); cursor: pointer; font-size: 1.25rem; }
-.globe-navigation button:hover { background: var(--accent); }
-.globe-navigation button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
 .globe-place { font-size: 1.35rem; font-weight: 600; line-height: 1.25; margin: 0; overflow-wrap: anywhere; }
 .globe-place-meta, .globe-local, .globe-selection-note { font-size: .8125rem; color: var(--muted-foreground); margin: .4rem 0 0; line-height: 1.5; }
 .globe-location { margin-bottom: 1rem; }
@@ -500,6 +495,24 @@ footer p { margin: 0; }
 .method-copy > p { font-size: .8125rem; }
 .sources > p, .sources a, footer { font-size: .75rem; }
 .chart-tooltip { font-size: .875rem; }
+.chart-hover-surface { min-width: 0; }
+.floating-chart-tooltip { position: fixed; z-index: 1000; pointer-events: none; width: max-content; max-width: min(22rem, calc(100vw - 16px)); min-width: 0; overflow: hidden; box-shadow: 0 6px 22px #0002; }
+.skin-type-trigger { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .15rem; min-height: 3rem; padding: .3rem 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.skin-type-trigger strong { font-size: .9375rem; font-weight: 500; text-decoration: underline dotted #89a897; text-underline-offset: .25rem; }
+.skin-type-trigger small { font-size: .75rem; color: var(--muted-foreground); }
+.skin-type-trigger:hover strong, .skin-type-trigger[data-popup-open] strong { color: var(--primary); }
+.skin-type-trigger:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; border-radius: 3px; }
+.skin-photo-card { width: min(26rem, calc(100vw - 2rem)); max-height: min(36rem, var(--available-height)); overflow-y: auto; padding: 1rem; gap: .85rem; background: white; color: #202923; border: 1px solid #cad6ce; box-shadow: 0 8px 30px #14271b26; }
+.skin-photo-card [data-slot="popover-title"] { font-size: 1rem; line-height: 1.4; }
+.skin-photo-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.skin-photo-pair figure { min-width: 0; margin: 0; }
+.skin-photo-pair img { display: block; width: 100%; height: auto; aspect-ratio: 4 / 3; object-fit: contain; background: #f7f8f6; }
+.skin-photo-pair figcaption { margin-top: .4rem; font-size: .8125rem; line-height: 1.4; }
+.skin-photo-pair a { display: block; margin-top: .2rem; color: var(--primary); font-size: .75rem; }
+.skin-photo-card [data-slot="popover-description"], .skin-photo-note { margin: 0; color: #58645d; font-size: .875rem; line-height: 1.5; }
+.skin-photo-note { font-size: .8125rem; }
+.skin-photo-license { margin: 0; font-size: .75rem; color: #67756c; }
+.skin-photo-license a { text-decoration: underline; text-underline-offset: .15em; }
 .chart-tooltip-date, .chart-tooltip-note { font-size: .75rem; }
 @media (max-width: 1100px) { .fact-section { grid-template-columns: minmax(180px, .33fr) minmax(0, 1fr); gap: 1.75rem; } .sky-grid { gap: .6rem; } .sky-grid article { padding: .8rem; } .geography-content { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; } .skin-dose-row { grid-template-columns: 7rem minmax(0, 1fr) 4.75rem; gap: .6rem; } .skin-dose-scale { margin-left: 7.6rem; margin-right: 5.35rem; } }
 @media (max-width: 760px) { .fact-section { grid-template-columns: minmax(0, 1fr); gap: 1.25rem; padding: 2rem .5rem; } .fact-heading p { max-width: 60ch; margin-bottom: .5rem; } .fact-heading h2 { margin-bottom: .6rem; } .dose-result { flex-wrap: wrap; gap: .5rem; } .reflectance-scale { margin-left: 6.5rem; margin-right: 7.3rem; } .reflectance-row { grid-template-columns: 6rem minmax(0, 1fr) 6.8rem; gap: .5rem; } }

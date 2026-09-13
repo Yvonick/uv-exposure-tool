@@ -100,8 +100,8 @@ export default function SolarGlobe({ location, year, onPick }: {
               onPointerDown={(event) => { if (!pointAt(event)) return; drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
               onPointerMove={move} onPointerCancel={() => { drag.current = null; }}
               onPointerUp={(event) => { const moved = drag.current?.moved; const started = !!drag.current; drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); if (started && !moved) { const point = pointAt(event); if (point) void selectPoint(point); } }}>
-              <defs><radialGradient id="ocean"><stop offset="0" stopColor="#edf5f0" /><stop offset="1" stopColor="#b9d6cb" /></radialGradient><clipPath id="earth-disk"><circle cx={CENTER} cy={CENTER} r={RADIUS} /></clipPath><marker id="sun-arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0L6,3L0,6Z" fill="#c19a4d" /></marker></defs>
-              {sideSun && <g transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} aria-hidden="true"><circle cx="264" cy="0" r="13" fill="#e6bb69" />{[-60, -30, 0, 30, 60].map((offset) => <line key={offset} x1="237" x2={Math.sqrt(RADIUS ** 2 - offset ** 2) + 4} y1={offset} y2={offset} stroke="#c19a4d" strokeWidth="1.5" markerEnd="url(#sun-arrow)" />)}</g>}
+              <defs><radialGradient id="ocean"><stop offset="0" stopColor="#edf5f0" /><stop offset="1" stopColor="#b9d6cb" /></radialGradient><clipPath id="earth-disk"><circle cx={CENTER} cy={CENTER} r={RADIUS} /></clipPath><linearGradient id="sunlight-cone" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="440" y2="0"><stop offset="0" stopColor="#e6ba5f" stopOpacity=".3" /><stop offset=".65" stopColor="#e6ba5f" stopOpacity=".16" /><stop offset="1" stopColor="#e6ba5f" stopOpacity="0" /></linearGradient></defs>
+              {sideSun && <path d="M1600,0L0,-185L0,185Z" transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="url(#sunlight-cone)" pointerEvents="none" aria-hidden="true" />}
               <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="url(#ocean)" stroke="#6b9484" />
               <circle className="globe-focus" cx={CENTER} cy={CENTER} r={RADIUS + 9} aria-hidden="true" />
               <g clipPath="url(#earth-disk)" aria-hidden="true"><path d={grid} fill="none" stroke="#729686" strokeWidth=".65" opacity=".5" /><path d={outline} fill="none" stroke="#3c705b" strokeWidth="1.2" strokeLinejoin="round" /><path d={nightPath(sun)} transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="#182d3c" opacity=".65" /></g>
@@ -110,7 +110,6 @@ export default function SolarGlobe({ location, year, onPick }: {
               <path d={`M${CENTER - 5},${CENTER}h10M${CENTER},${CENTER - 5}v10`} stroke="#3d5349" strokeWidth=".8" opacity=".6" aria-hidden="true" />
               {!sideSun && <text x="300" y="70" textAnchor="middle" className="globe-sun-caption">{sun.z > 0 ? 'Sunlight from the viewer’s direction' : 'Sunlight from behind the globe'}</text>}
             </svg>
-            <div className="globe-navigation"><button type="button" onClick={() => setView((v) => ({ ...v, longitude: wrapLongitude(v.longitude - 45) }))} aria-label="Rotate globe west">←</button><span>Drag to rotate · click a place</span><button type="button" onClick={() => setView((v) => ({ ...v, longitude: wrapLongitude(v.longitude + 45) }))} aria-label="Rotate globe east">→</button></div>
             {mapError && <p className="fact-note">Coastlines could not load. Place selection still works.</p>}
           </div>
           <div className="globe-results" aria-live="polite" aria-busy={picking}>

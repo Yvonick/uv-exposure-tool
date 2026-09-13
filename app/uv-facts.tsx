@@ -2,6 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { Slider } from '@/components/ui/slider';
+import SkinPhotoCard from './skin-photo-card';
 import { DAILY_REFERENCE_SED, skinDoseRanges, standardErythemalDose } from '@/lib/uv-dose';
 
 const sources = {
@@ -60,7 +61,7 @@ export default function UvFacts() {
             <div className="skin-dose-scale" aria-hidden="true"><span>0</span><span>5</span><span>10</span><span>15</span><span>20 SED</span></div>
             {skinDoseRanges.map((skin) => (
               <div className="skin-dose-row" key={skin.type}>
-                <span><strong>Type {skin.type}</strong><small>{skin.response}</small></span>
+                <SkinPhotoCard type={skin.type} response={skin.response} />
                 <div className="skin-dose-track" aria-hidden="true">
                   <div className="skin-dose-range" style={{ left: `${skin.low / 20 * 100}%`, width: `${(skin.high - skin.low) / 20 * 100}%` }} />
                   <i className="skin-daily-reference" style={{ left: `${DAILY_REFERENCE_SED / 20 * 100}%` }} />
@@ -72,6 +73,7 @@ export default function UvFacts() {
           </figure>
           <p className="fact-note">1 SED is a fixed dose unit. ARPANSA’s 1 SED daily reference applies across the chart; it is not a damage-free limit or a new allowance for each outing. Sunburn thresholds vary by skin type, but validated “safe daily doses” for each type are not available.</p>
           <Evidence>
+            <Finding agency="DermNet" href="https://dermnetnz.org/topics/skin-phototype">Photo examples use the sources’ own phototype labels. Phototype describes burning and tanning response, not an exact colour range. Lighting, body area and skin conditions affect appearance; matching a photo cannot establish an individual sunburn threshold.</Finding>
             <Finding agency="RIVM" href={sources.rivm}>These characteristic ranges (table 1) describe first redness assessed about a day later. Colour alone cannot predict an individual threshold.</Finding>
             <Finding agency="ARPANSA" href={sources.arpansa}>Describes 1 SED per day as safe for most people and advises considering protection beyond it, especially with fair skin. This is practical guidance, not a universal biological safety boundary.</Finding>
             <Finding agency="Shih et al., 2018" href={sources.dna2018}>DNA damage was detected at 20% of each participant’s individual sunburn dose. Darker skin showed greater protection in deeper layers; the findings do not establish a higher safe daily dose.</Finding>
@@ -117,6 +119,7 @@ export default function UvFacts() {
             ))}
           </figure>
           <p className="fact-note">Bars run from zero to the highest estimate; hatching shows the variable part. *For “below 10%”, no minimum is given, so hatching starts at zero. Sea foam has one approximate reference value.</p>
+          <p className="fact-note"><strong>The UV Index is linear.</strong> +10% UV means UVI 3 → 3.3, or UVI 6 → 6.6. Each UVI unit represents the same increase in sunburn-weighted radiation. <Source href="https://www.cpc.ncep.noaa.gov/products/stratosphere/uv_index/uv_compute.shtml">NOAA</Source></p>
           <div className="reflection-example"><p><strong>Broad snow cover: UVI 3 → about 4.2–4.5</strong></p><p>JMA reports a 40–50% increase over extensive snowfields: reflected light scatters back down from the atmosphere. This is an illustrative calculation, not a correction to the live forecast. <Source href={sources.jmaGround}>JMA</Source></p></div>
           <p className="fact-note">A surface reflecting 80% of UV does not automatically add 80% to the UV Index. Reflection can also reach skin from below; use clothing and sunscreen on exposed skin as well as overhead shade.</p>
           <Evidence>
