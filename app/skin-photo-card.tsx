@@ -15,13 +15,12 @@ export default function SkinPhotoCard({ type, response }: { type: string; respon
       <PopoverTitle>{t('Type')} {type} · {t(example.tone)}</PopoverTitle>
       <div className="skin-photo-pair">
         {example.photos.map((photo) => <figure key={photo.src}>
-          <img src={photo.src} alt={t('Source-labelled phototype {type}: {caption}', { type, caption: t(photo.caption) })} width={640} height={480} loading="lazy" decoding="async" />
-          <figcaption>{t(photo.caption)}<a href={photo.source} target="_blank" rel="noreferrer">{photo.credit} ↗</a></figcaption>
+          <img src={photo.src} alt={t('Portrait of {name}', { name: photo.name })} width={400} height={533} loading="lazy" decoding="async" />
+          <figcaption>{photo.name}<a href={photo.source} target="_blank" rel="noreferrer">© {photo.credit} ↗</a><a href={photo.licenseUrl} target="_blank" rel="noreferrer">{photo.license}</a></figcaption>
         </figure>)}
       </div>
+      <p className="skin-photo-source">{t('Examples cited by')} <a href="https://ochsdermatology.com/fitzpatrick-scale" target="_blank" rel="noreferrer">Ochs Dermatology ↗</a></p>
       <PopoverDescription>{t("Phototype describes burning and tanning response. Photos are examples; appearance alone cannot determine your type.")}</PopoverDescription>
-      {example.note && <p className="skin-photo-note">{t(example.note)}</p>}
-      <p className="skin-photo-license">{t("Images:")} <a href="https://dermnetnz.org/image-licence" target="_blank" rel="noreferrer">{t("CC BY-NC-ND 4.0")}</a>{type === 'VI' && <> {t("· cheek:")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a></>}</p>
     </PopoverContent>
   </Popover>;
 }
