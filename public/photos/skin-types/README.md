@@ -1,28 +1,73 @@
-# Skin phototype portrait examples
+# Healthy-skin examples and attribution
 
-Reviewed 13 September 2026. Two ordinary portrait photographs are provided for each of the six types. No photograph depicts a skin disease or a treatment result.
+These six examples replace the celebrity portraits. The studies supply the
+Fitzpatrick labels; this application does not classify people from appearance.
+The images are illustrative and are not measurements of the chart's SED ranges.
+They cover neither the full visual diversity of a type nor comparable lighting
+and body sites across the two studies.
 
-## Phototype provenance
+## University of Minho — types II, III, V, VI
 
-All twelve people are explicitly named as examples of the corresponding phototype by [Ochs Dermatology](https://ochsdermatology.com/fitzpatrick-scale), also listed by [Skye Center for Dermatology](https://www.skyedermatology.com/fitzpatrick-scale.html). These practice guides give illustrative examples, not published individual clinical assessments. We do not infer a person's phototype or health from their photograph. Lighting, makeup, tanning and camera settings affect appearance; portraits cannot establish an individual UV threshold.
+Gomes, Andreia E.; Linhares, João M. M.; Nascimento, Sérgio M. C. (2024).
+**University of Minho Hyperspectral Faces Database: UMINHO-HSFD.** figshare.
+[Collection DOI](https://doi.org/10.6084/m9.figshare.c.7163569).
+[Paper](https://doi.org/10.1177/00037028241279323).
 
-## Photograph rights and attribution
+License: [Creative Commons Attribution 4.0 International](https://creativecommons.org/licenses/by/4.0/).
 
-Photographs come from Wikimedia Commons, under the individual Creative Commons licenses linked below. Source files are unchanged Wikimedia-generated thumbnails or existing Commons crops: no local cropping, skin retouching or recolouring. The full downloaded photograph is displayed with CSS object-fit: contain. Attribution and license links appear in every hover card. The source file page records the original author, any pre-existing crop and revision history. Share-alike terms continue to apply to those photographs; this is not a claim that the entire website has the same license.
+The collection contains volunteers without diagnosed or visible skin problems.
+Its RGB reference images are rendered from hyperspectral measurements under
+CIE D65, not ordinary camera photographs. The authors redacted the eye regions
+for identity protection. Original JPEG bytes are retained without recolouring,
+retouching, resampling, or generated detail. The interface shows cheek regions
+through SVG viewBoxes; this display crop excludes the eye redactions, hair and
+documented movement artefacts around the eyes. Display cropping is the only
+adaptation, and image coordinates below are in source pixels (x, y, width, height).
 
-| Type | Person | Local file | Credit | License | Source | Image |
-| --- | --- | --- | --- | --- | --- | --- |
-| I | Emma Stone | portrait-1-a.jpg | Harald Krichel | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:Emma_Stone_at_the_2025_Venice_Film_Festival-6313_(cropped).jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/2/23/Emma_Stone_at_the_2025_Venice_Film_Festival-6313_%28cropped%29.jpg/500px-Emma_Stone_at_the_2025_Venice_Film_Festival-6313_%28cropped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| I | Hugh Grant | portrait-1-b.jpg | Kurt Kulac | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [File and history](https://commons.wikimedia.org/wiki/File:Hugh_Grant_in_2014.jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/6/6a/Hugh_Grant_in_2014.jpg/500px-Hugh_Grant_in_2014.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| II | Kate Winslet | portrait-2-a.jpg | Colleen Sturtevant | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:KateWinslet_(cropped).jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/5/53/KateWinslet_%28cropped%29.jpg/500px-KateWinslet_%28cropped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| II | Owen Wilson | portrait-2-b.jpg | Georges Biard | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [File and history](https://commons.wikimedia.org/wiki/File:Owen_Wilson_Cannes_2011.jpg) | [Downloaded version](https://upload.wikimedia.org/wikipedia/commons/4/49/Owen_Wilson_Cannes_2011.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled) |
-| III | Sandra Bullock | portrait-3-a.jpg | Richard Goldschmidt / Keraunoscopia | [CC BY 3.0](https://creativecommons.org/licenses/by/3.0) | [File and history](https://commons.wikimedia.org/wiki/File:Sandra_Bullock,_The_Heat,_London,_2013_(crop).jpg) | [Downloaded version](https://upload.wikimedia.org/wikipedia/commons/d/da/Sandra_Bullock%2C_The_Heat%2C_London%2C_2013_%28crop%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled) |
-| III | George Clooney | portrait-3-b.jpg | Bryan Berlin | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:George_Clooney_Jay_Kelly-19_(cropped).jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7a/George_Clooney_Jay_Kelly-19_%28cropped%29.jpg/500px-George_Clooney_Jay_Kelly-19_%28cropped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| IV | Jessica Alba | portrait-4-a.jpg | Kevin Paul | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:Jessica_Alba_-_Los_Angeles_Comic_Con_2025.jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/8/81/Jessica_Alba_-_Los_Angeles_Comic_Con_2025.jpg/960px-Jessica_Alba_-_Los_Angeles_Comic_Con_2025.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| IV | Dev Patel | portrait-4-b.jpg | Ariela Ortiz Barrantes | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:SXSW_2024_-_Dev_Patel_2.jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/1/10/SXSW_2024_-_Dev_Patel_2.jpg/960px-SXSW_2024_-_Dev_Patel_2.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| V | Halle Berry | portrait-5-a.jpg | Harald Krichel / WikiPortraits | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:Halle_Berry-1910.jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/a/aa/Halle_Berry-1910.jpg/500px-Halle_Berry-1910.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| V | Will Smith | portrait-5-b.jpg | Steve Jennings/Getty Images for TechCrunch | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) | [File and history](https://commons.wikimedia.org/wiki/File:TechCrunch_Disrupt_San_Francisco_2019_-_Day_1_(48834070763)_(cropped).jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/TechCrunch_Disrupt_San_Francisco_2019_-_Day_1_%2848834070763%29_%28cropped%29.jpg/500px-TechCrunch_Disrupt_San_Francisco_2019_-_Day_1_%2848834070763%29_%28cropped%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| VI | Lupita Nyong’o | portrait-6-a.jpg | Philip Romano | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:LupitaNyongo-byPhilipRomano.jpg) | [Downloaded version](https://thumb.wikimedia.org/wikipedia/commons/thumb/f/f6/LupitaNyongo-byPhilipRomano.jpg/960px-LupitaNyongo-byPhilipRomano.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail) |
-| VI | Taye Diggs | portrait-6-b.jpg | Larry D. Moore | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0) | [File and history](https://commons.wikimedia.org/wiki/File:Taye_Diggs_2015.jpg) | [Downloaded version](https://upload.wikimedia.org/wikipedia/commons/d/d1/Taye_Diggs_2015.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled) |
+Phototypes: [faces_metadata](https://figshare.com/articles/dataset/faces_metadata/25599153).
+Images: [RGB_files](https://figshare.com/articles/dataset/RGB_files/25594026).
+Acquisition defects checked against [images_artifacts, version 2](https://figshare.com/articles/dataset/images_artifacts/25599159/2).
 
-The prior DermNet clinical images and post-treatment image have been removed. SGS's stock-photo pairs were considered but not used because their terms require permission for reuse.
+| Type | Local file | Original source file | Dimensions | Display viewBox |
+| --- | --- | --- | --- | --- |
+| II | minho-207.jpg | [207_RGB_pixelized.jpg](https://ndownloader.figshare.com/files/45622407) | 618 × 923 | 65 485 150 100 |
+| III | minho-208.jpg | [208_RGB_pixelized.jpg](https://ndownloader.figshare.com/files/45622437) | 727 × 1037 | 65 545 180 120 |
+| V | minho-249.jpg | [249_RGB_pixelized.jpg](https://ndownloader.figshare.com/files/45622386) | 710 × 960 | 65 565 150 100 |
+| VI | minho-282.jpg | [282_RGB_pixelized.jpg](https://ndownloader.figshare.com/files/45622383) | 566 × 748 | 65 425 135 90 |
+
+The published metadata contain no type I or IV and just one type VI participant.
+In particular, the VI example must not be presented as a representative colour
+standard for everyone classified VI.
+
+## Mantri & Jokerst — types I, IV
+
+Yash Mantri and Jesse V. Jokerst (2022). **Impact of skin tone on photoacoustic
+oximetry and tools to minimize bias.** Biomedical Optics Express 13(2), 875–887.
+[DOI 10.1364/BOE.450224](https://doi.org/10.1364/BOE.450224).
+[Figure 2](https://pmc.ncbi.nlm.nih.gov/articles/PMC8884230/#g002).
+**© 2022 Optica Publishing Group.**
+
+License: [Optica Open Access, Version of Record](https://doi.org/10.1364/OA_License_v2#VOR-OA).
+This permits noncommercial reuse and adaptations with attribution. It is **not a
+Creative Commons license**. These assets are included for this noncommercial
+educational site; commercial reuse requires separate rights review or replacement.
+
+Figure 2 identifies panels A and B as dorsal forearms of healthy volunteers with
+Fitzpatrick types 1 and 4. Methods §4.1 uses a researcher's subjective assessment
+and objective ITA/colorimetry, not a burn-and-tan questionnaire. This limitation
+is disclosed in the site's sources panel.
+
+Original JPEG image objects were extracted byte-for-byte with pypdf from page 3
+(printed page 877) of the [published PDF](https://europepmc.org/articles/PMC8884230?pdf=render).
+These standalone photographs retain the measurement ruler. The blue vector
+overlay in the composite figure is separate from the embedded photographs;
+it was not digitally removed. No retouching or invented resolution is used.
+
+| Type | Local file | Figure / PDF image object | Dimensions | Display viewBox |
+| --- | --- | --- | --- | --- |
+| I | mantri-type-I.jpg | 2A / Im1 | 160 × 162 | 0 0 160 162 |
+| IV | mantri-type-IV.jpg | 2B / Im0 | 161 × 162 | 0 0 161 162 |
+
+Both are displayed at 160 CSS pixels wide, respecting their modest source resolution.
+
+Source images, labels, licenses, and display crops reviewed on 13 September 2026.

@@ -1,131 +1,66 @@
-// People are cited as illustrative phototype examples by Ochs Dermatology.
-// Their portraits are not individual clinical assessments or a visual typing test.
-type Photo = { src: string; name: string; source: string; credit: string; license: string; licenseUrl: string };
-export const skinPhotos: Record<string, { tone: string; photos: Photo[] }> = {
-  "I": {
-    "tone": "Very fair",
-    "photos": [
-      {
-        "src": "/photos/skin-types/portrait-1-a.jpg",
-        "name": "Emma Stone",
-        "source": "https://commons.wikimedia.org/wiki/File:Emma_Stone_at_the_2025_Venice_Film_Festival-6313_(cropped).jpg",
-        "credit": "Harald Krichel",
-        "license": "CC BY-SA 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
-      },
-      {
-        "src": "/photos/skin-types/portrait-1-b.jpg",
-        "name": "Hugh Grant",
-        "source": "https://commons.wikimedia.org/wiki/File:Hugh_Grant_in_2014.jpg",
-        "credit": "Kurt Kulac",
-        "license": "CC BY-SA 3.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
-      }
-    ]
-  },
-  "II": {
-    "tone": "Fair",
-    "photos": [
-      {
-        "src": "/photos/skin-types/portrait-2-a.jpg",
-        "name": "Kate Winslet",
-        "source": "https://commons.wikimedia.org/wiki/File:KateWinslet_(cropped).jpg",
-        "credit": "Colleen Sturtevant",
-        "license": "CC BY-SA 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
-      },
-      {
-        "src": "/photos/skin-types/portrait-2-b.jpg",
-        "name": "Owen Wilson",
-        "source": "https://commons.wikimedia.org/wiki/File:Owen_Wilson_Cannes_2011.jpg",
-        "credit": "Georges Biard",
-        "license": "CC BY-SA 3.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/3.0"
-      }
-    ]
-  },
-  "III": {
-    "tone": "Medium",
-    "photos": [
-      {
-        "src": "/photos/skin-types/portrait-3-a.jpg",
-        "name": "Sandra Bullock",
-        "source": "https://commons.wikimedia.org/wiki/File:Sandra_Bullock,_The_Heat,_London,_2013_(crop).jpg",
-        "credit": "Richard Goldschmidt / Keraunoscopia",
-        "license": "CC BY 3.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by/3.0"
-      },
-      {
-        "src": "/photos/skin-types/portrait-3-b.jpg",
-        "name": "George Clooney",
-        "source": "https://commons.wikimedia.org/wiki/File:George_Clooney_Jay_Kelly-19_(cropped).jpg",
-        "credit": "Bryan Berlin",
-        "license": "CC BY-SA 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
-      }
-    ]
-  },
-  "IV": {
-    "tone": "Olive / light brown",
-    "photos": [
-      {
-        "src": "/photos/skin-types/portrait-4-a.jpg",
-        "name": "Jessica Alba",
-        "source": "https://commons.wikimedia.org/wiki/File:Jessica_Alba_-_Los_Angeles_Comic_Con_2025.jpg",
-        "credit": "Kevin Paul",
-        "license": "CC BY 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
-      },
-      {
-        "src": "/photos/skin-types/portrait-4-b.jpg",
-        "name": "Dev Patel",
-        "source": "https://commons.wikimedia.org/wiki/File:SXSW_2024_-_Dev_Patel_2.jpg",
-        "credit": "Ariela Ortiz Barrantes",
-        "license": "CC BY-SA 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
-      }
-    ]
-  },
-  "V": {
-    "tone": "Brown",
-    "photos": [
-      {
-        "src": "/photos/skin-types/portrait-5-a.jpg",
-        "name": "Halle Berry",
-        "source": "https://commons.wikimedia.org/wiki/File:Halle_Berry-1910.jpg",
-        "credit": "Harald Krichel / WikiPortraits",
-        "license": "CC BY-SA 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
-      },
-      {
-        "src": "/photos/skin-types/portrait-5-b.jpg",
-        "name": "Will Smith",
-        "source": "https://commons.wikimedia.org/wiki/File:TechCrunch_Disrupt_San_Francisco_2019_-_Day_1_(48834070763)_(cropped).jpg",
-        "credit": "Steve Jennings/Getty Images for TechCrunch",
-        "license": "CC BY 2.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by/2.0"
-      }
-    ]
-  },
-  "VI": {
-    "tone": "Deep brown",
-    "photos": [
-      {
-        "src": "/photos/skin-types/portrait-6-a.jpg",
-        "name": "Lupita Nyong’o",
-        "source": "https://commons.wikimedia.org/wiki/File:LupitaNyongo-byPhilipRomano.jpg",
-        "credit": "Philip Romano",
-        "license": "CC BY-SA 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0"
-      },
-      {
-        "src": "/photos/skin-types/portrait-6-b.jpg",
-        "name": "Taye Diggs",
-        "source": "https://commons.wikimedia.org/wiki/File:Taye_Diggs_2015.jpg",
-        "credit": "Larry D. Moore",
-        "license": "CC BY 4.0",
-        "licenseUrl": "https://creativecommons.org/licenses/by/4.0"
-      }
-    ]
-  }
+// Phototypes are taken from the studies' labels, never inferred from these images.
+// Original image bytes are preserved. SVG viewports show only a patch of healthy skin.
+export const minhoSource = 'https://doi.org/10.6084/m9.figshare.c.7163569';
+export const minhoMetadata = 'https://figshare.com/articles/dataset/faces_metadata/25599153';
+export const mantriSource = 'https://doi.org/10.1364/BOE.450224';
+
+type Photo = {
+  src: string;
+  id: string;
+  region: string;
+  width: number;
+  height: number;
+  crop: [number, number, number, number];
+  displayWidth?: number;
+  source: string;
+  study: string;
+  credit: string;
+  license: string;
+  licenseUrl: string;
+};
+
+const minho = {
+  region: 'Cheek',
+  source: minhoMetadata,
+  study: 'University of Minho',
+  credit: 'Gomes, Linhares & Nascimento (2024)',
+  license: 'CC BY 4.0',
+  licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+};
+
+const mantri = {
+  region: 'Forearm',
+  source: 'https://pmc.ncbi.nlm.nih.gov/articles/PMC8884230/#g002',
+  study: 'Mantri & Jokerst (2022)',
+  credit: '2022 Optica Publishing Group',
+  license: 'Optica OA · noncommercial reuse',
+  licenseUrl: 'https://doi.org/10.1364/OA_License_v2#VOR-OA',
+  displayWidth: 160,
+};
+
+export const skinPhotos: Record<string, { tone: string; photo?: Photo }> = {
+  I: { tone: 'Very fair', photo: {
+    ...mantri, id: 'Fig. 2A', src: '/photos/skin-types/mantri-type-I.jpg',
+    width: 160, height: 162, crop: [0, 0, 160, 162],
+  } },
+  II: { tone: 'Fair', photo: {
+    ...minho, id: '207', src: '/photos/skin-types/minho-207.jpg',
+    width: 618, height: 923, crop: [65, 485, 150, 100],
+  } },
+  III: { tone: 'Medium', photo: {
+    ...minho, id: '208', src: '/photos/skin-types/minho-208.jpg',
+    width: 727, height: 1037, crop: [65, 545, 180, 120],
+  } },
+  IV: { tone: 'Olive / light brown', photo: {
+    ...mantri, id: 'Fig. 2B', src: '/photos/skin-types/mantri-type-IV.jpg',
+    width: 161, height: 162, crop: [0, 0, 161, 162],
+  } },
+  V: { tone: 'Brown', photo: {
+    ...minho, id: '249', src: '/photos/skin-types/minho-249.jpg',
+    width: 710, height: 960, crop: [65, 565, 150, 100],
+  } },
+  VI: { tone: 'Deep brown', photo: {
+    ...minho, id: '282', src: '/photos/skin-types/minho-282.jpg',
+    width: 566, height: 748, crop: [65, 425, 135, 90],
+  } },
 };
