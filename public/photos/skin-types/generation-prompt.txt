@@ -1,13 +1,25 @@
-Use case: scientific-educational illustration, photorealistic studio portrait contact sheet.
-Asset: ONE cohesive contact sheet for a UV education website, containing EXACTLY TWELVE DIFFERENT FICTIONAL ADULT PEOPLE. It will be explicitly labelled AI-generated illustrations in the website. These are imagined skin-tone examples, NOT real volunteers, NOT clinically validated Fitzpatrick types, NOT a calibrated medical colour reference.
-Composition: landscape canvas ratio 9:4, preferably 3456 x 1536. EXACTLY SIX EQUAL COLUMNS and TWO EQUAL ROWS, edge-to-edge regular grid, no gaps, no outer margins, no grid lines, no labels or text. Each of the twelve tiles is a separate portrait in a 3:4 rectangle. A unique adult woman in the upper tile and a unique adult man in the lower tile of each column. Each person appears only once; twelve genuinely different faces, not the same person recoloured.
-Consistent photographic setup throughout all 12: front-facing head and upper shoulders, looking straight into camera, natural relaxed neutral expression with closed lips, entire head including crown and chin clearly inside the tile. Top of hair about 10% below the top edge; chin around 73% of tile height; shoulders enter lower 20%. Face scale, eye height, lens perspective and camera distance identical for all people. Equal amount of breathing room around each head. Hair kept clear of cheeks and forehead as practical. No hats, no glasses, no jewellery, no heavy facial hair, no makeup, no glam styling. Simple identical medium grey crew-neck tops. Plain identical pale warm-grey studio background. Diffuse broad frontal daylight with gentle modelling, no harsh side shadows, no colour casts, no dramatic lighting or beauty retouching; preserve ordinary healthy skin texture, subtle pores and normal individual variation. No lesions, rashes, injury, visible medical conditions or clinical treatment.
-Skin tone progression by column from left to right, in BOTH rows:
-1. Very fair pale ivory skin, subtle natural freckles acceptable; two subtly different undertones, clearly the fairest column.
-2. Fair skin, slightly more pigmented than column 1, one neutral and one warm undertone.
-3. Intermediate beige / light olive skin, visibly deeper than column 2.
-4. Medium light-brown / warm olive skin, clearly deeper than column 3.
-5. Rich brown skin, with two subtle undertone variations, clearly deeper than column 4.
-6. Deep dark-brown skin, with detail retained in shadows, two subtle undertone variations, clearly deepest column.
-Do not make background, exposure, white balance, or lighting progressively darker: ONLY the natural imagined skin pigmentation changes across columns. Diverse natural facial features and hairstyles without caricature, adults approximately 25–40 years old. This should read as a sober, friendly, homogeneous studio lineup of everyday people rather than a fashion ad.
-No text, no numbers, no Roman numerals, no borders, no logos, no watermarks, no repeated people, no extreme zoom or skin macro shots.
+Use case: photorealistic educational illustration. Edit the attached AI-generated contact sheet.
+Image 1 is the edit target and the reference for the existing studio presentation. Keep its EXACT six-column, two-row grid and 9:4 overall aspect ratio. Keep identical neutral pale warm-grey backgrounds, grey crew-neck tops, soft diffuse frontal daylight, front-facing head-and-shoulders framing, and consistent face size and eye height. Each tile remains 3:4 with the whole head, chin and upper shoulders visible. Maintain a small margin above all hair. No extra zoom.
+Replace the cast with TWELVE DISTINCT FICTIONAL ADULTS according to the casting brief below. The main change is TWO DIFFERENT ETHNIC BACKGROUND INSPIRATIONS within EACH COLUMN, rather than the same profile rendered once as a woman and once as a man. These are entirely imaginary people, not depictions of real people. Convey diversity naturally through individual facial features and ordinary hairstyles, without caricature, exaggerated ethnic markers, cultural costumes, flags or accessories. Skin tone is not an ethnic label. Do not imply a one-to-one relationship between ethnicity, skin tone, or clinical phototype. Different fictional backgrounds occur within a similar skin-tone band, and some backgrounds recur across several bands.
+Casting and visible tone instructions, column by column from LEFT to RIGHT. Upper and lower people in each column must have COMPARABLE SKIN LIGHTNESS, with natural subtle undertone variation. Gender is deliberately mixed across the grid, not one gender for each row:
+COLUMN 1 — both very fair, pale ivory skin:
+upper: fictional woman of Irish family background, light auburn hair, a few ordinary freckles.
+lower: fictional woman of Japanese family background, straight black hair tied back, very fair ivory skin with no artificial whitening.
+COLUMN 2 — both fair skin, slightly deeper than column 1:
+upper: fictional man of Korean family background, short straight black hair, fair skin.
+lower: fictional man of Polish family background, short dark blond hair, fair skin.
+COLUMN 3 — both intermediate beige / light olive skin:
+upper: fictional woman of Greek family background, dark wavy hair loosely tied back, light olive complexion.
+lower: fictional man of Chinese family background, short dark hair, naturally intermediate warm beige complexion.
+COLUMN 4 — both medium light-brown / warm olive skin:
+upper: fictional man with mixed Indigenous Mexican and European family background, short straight dark hair, medium light-brown skin.
+lower: fictional woman of South Indian family background, dark hair tied back, comparable medium light-brown skin.
+COLUMN 5 — both rich brown skin:
+upper: fictional woman of Afro-Caribbean family background, ordinary short natural coiled hair, rich brown complexion.
+lower: fictional man of Sri Lankan Tamil family background, dark wavy hair, comparable rich brown complexion.
+COLUMN 6 — both deep dark-brown skin:
+upper: fictional woman of South Indian Tamil family background, long dark wavy hair tied back, naturally very deep dark-brown complexion.
+lower: fictional man of West African family background, short coiled hair, comparably deep dark-brown complexion.
+All people approximately 25–40, unremarkable healthy skin with natural pores, relaxed neutral expressions with closed lips, minimal facial hair, no makeup or beauty retouching. Different facial proportions and individual identities, no shared identity between tiles. The faces must be readable in small portrait cards.
+Keep the skin-lightness progression across columns while holding exposure, lighting and background constant. Two people within each column are visibly similar in skin lightness; their differences must come from the fictional casting, not from a different skin-tone category.
+This is an explicitly AI-labelled illustration set for broad skin-tone examples only. Do not depict clinical measurements, do not assign Fitzpatrick diagnoses to these fictional faces, and do not render any labels, text, numbers, Roman numerals, logos, watermarks, borders or gutters. Output only the revised twelve-portrait contact sheet.

@@ -1,9 +1,10 @@
 // Fictional AI-generated portraits illustrate broad skin-tone descriptions only.
 // The faces have no clinical phototype and are not the subjects behind SED data.
+// Each pair varies the fictional background; the UI does not label anyone's ethnicity.
 export const phototypeSource = 'https://dermnetnz.org/topics/skin-phototype';
 export const portraitLineup = {
-  src: '/photos/skin-types/ai-portrait-lineup.png',
-  width: 1881,
+  src: '/photos/skin-types/ai-portrait-lineup-v2.png',
+  width: 1882,
   height: 836,
   columns: 6,
   rows: 2,
