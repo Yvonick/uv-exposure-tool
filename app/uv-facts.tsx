@@ -3,7 +3,7 @@
 import { useState, type ReactNode } from 'react';
 import { Slider } from '@/components/ui/slider';
 import SkinPhotoCard from './skin-photo-card';
-import { minhoSource, mantriSource } from '@/lib/skin-photos';
+import { phototypeSource } from '@/lib/skin-photos';
 import { useLanguage } from './language';
 import { DAILY_REFERENCE_SED, skinDoseRanges, standardErythemalDose } from '@/lib/uv-dose';
 
@@ -77,9 +77,7 @@ export default function UvFacts() {
           </figure>
           <p className="fact-note">{t("1 SED is a fixed dose unit. ARPANSA’s 1 SED daily reference applies across the chart; it is not a damage-free limit or a new allowance for each outing. Sunburn thresholds vary by skin type, but validated “safe daily doses” for each type are not available.")}</p>
           <Evidence>
-            <Finding agency="UMINHO-HSFD · Gomes et al., 2024" href={minhoSource}>{t("Types II, III, V and VI: cheek views from volunteers without diagnosed or visible skin problems, with phototypes documented in the dataset. These are unretouched RGB renderings from laboratory hyperspectral images. The dataset has no types I or IV and only one type VI participant.")}</Finding>
-            <Finding agency="Mantri & Jokerst, 2022 · Fig. 2A–B" href={mantriSource}>{t("Types I and IV: healthy-volunteer forearms. The study uses researcher assessment and colour measurements, not a burn-and-tan questionnaire. Original photographs are shown at their modest native resolution, under Optica’s licence for noncommercial reuse.")}</Finding>
-            <p className="fact-note">{t("These six people are examples, not the full range within each type. Body area, lighting and image processing differ between studies. The photographs do not measure the sunburn doses shown in the chart.")}</p>
+            <Finding agency="DermNet · Fitzpatrick" href={phototypeSource}>{t("Phototype describes the skin’s response to sunlight, especially burning and tanning. The two portraits for each type are fictional AI-generated illustrations of broad skin-tone descriptions, with consistent framing and lighting. They are not clinical examples, a calibrated colour scale or the participants behind the chart’s SED ranges. DermNet supports the descriptions, not the generated faces.")}</Finding>
             <Finding agency="RIVM" href={sources.rivm}>{t("These characteristic ranges (table 1) describe first redness assessed about a day later. Colour alone cannot predict an individual threshold.")}</Finding>
             <Finding agency="ARPANSA" href={sources.arpansa}>{t("Describes 1 SED per day as safe for most people and advises considering protection beyond it, especially with fair skin. This is practical guidance, not a universal biological safety boundary.")}</Finding>
             <Finding agency="Shih et al., 2018" href={sources.dna2018}>{t("DNA damage was detected at 20% of each participant’s individual sunburn dose. Darker skin showed greater protection in deeper layers; the findings do not establish a higher safe daily dose.")}</Finding>
