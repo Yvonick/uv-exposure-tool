@@ -3,8 +3,9 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { type Location } from '@/lib/locations';
-import { dailyModel, daysInYear, formatLowWindow, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
+import { dailyModel, daysInYear, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
 import { project, unproject, visibleLine, nightPath, type GeoPoint } from '@/lib/globe';
+import { useLanguage } from './language';
 
 type Land = { features: Array<{ geometry: { type: string; coordinates: number[][][] | number[][][][] } }> };
 const CENTER = 300, RADIUS = 180;
@@ -12,6 +13,7 @@ const CENTER = 300, RADIUS = 180;
 export default function SolarGlobe({ location, year, onPick }: {
   location: Location; year: number; onPick: (latitude: number, longitude: number) => Promise<Location>;
 }) {
+  const { locale, t, number, lowWindow } = useLanguage();
   const [day, setDay] = useState(() => Math.floor((Date.now() - Date.UTC(year, 0, 1)) / 86_400_000));
   const [utcMinutes, setUtcMinutes] = useState(720);
   const [view, setView] = useState<GeoPoint>({ latitude: 20, longitude: location.longitude });
@@ -44,10 +46,11 @@ export default function SolarGlobe({ location, year, onPick }: {
   const localDate = new Date(Date.UTC(+calendarParts.year, +calendarParts.month - 1, +calendarParts.day, 12));
   const result = dailyModel(location, localDate);
   const currentUv = uvAtInstant(location, instant);
-  const localLabel = new Intl.DateTimeFormat('en-GB', { timeZone: location.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(instant);
-  const dateLabel = new Intl.DateTimeFormat('en', { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(instant);
+  const localLabel = new Intl.DateTimeFormat(locale, { timeZone: location.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(instant);
+  const dateLabel = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(instant);
   const sun = project(subsolarPoint(instant), view);
-  const sunAngle = Math.atan2(-sun.y, sun.x) * 180 / Math.PI;
+  // Keep SVG serialization stable across server and browser math implementations.
+  const sunAngle = Number((Math.atan2(-sun.y, sun.x) * 180 / Math.PI).toFixed(6));
   const sideSun = Math.hypot(sun.x, sun.y) > .12;
   const marker = project(pendingPoint ?? location, view);
   const outline = useMemo(() => lines.map((line) => visibleLine(line, view)).join(''), [lines, view]);
@@ -88,15 +91,15 @@ export default function SolarGlobe({ location, year, onPick }: {
 
   return (
     <section className="fact-section globe-section" aria-labelledby="globe-title" id="globe">
-      <div className="fact-heading"><h2 id="globe-title">Latitude and sunlight</h2></div>
+      <div className="fact-heading"><h2 id="globe-title">{t("Latitude and sunlight")}</h2></div>
       <div className="fact-content">
         <div className="globe-controls">
-          <div><div className="slider-heading"><label id="globe-date-label">Date</label><output>{dateLabel}</output></div><Slider aria-labelledby="globe-date-label" value={[selectedDay]} onValueChange={(value) => setDay(Array.isArray(value) ? value[0] : value)} min={0} max={daysInYear(year) - 1} step={1} /><div className="slider-endpoints"><span>Jan 1</span><span>Dec 31</span></div></div>
-          <div><div className="slider-heading"><label id="globe-time-label">Time (UTC)</label><output>{String(Math.floor(utcMinutes / 60)).padStart(2, '0')}:{String(utcMinutes % 60).padStart(2, '0')}</output></div><Slider aria-labelledby="globe-time-label" value={[utcMinutes]} onValueChange={(value) => setUtcMinutes(Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
+          <div><div className="slider-heading"><label id="globe-date-label">{t("Date")}</label><output>{dateLabel}</output></div><Slider aria-labelledby="globe-date-label" value={[selectedDay]} onValueChange={(value) => setDay(Array.isArray(value) ? value[0] : value)} min={0} max={daysInYear(year) - 1} step={1} /><div className="slider-endpoints"><span>{t("Jan 1")}</span><span>{t("Dec 31")}</span></div></div>
+          <div><div className="slider-heading"><label id="globe-time-label">{t("Time (UTC)")}</label><output>{String(Math.floor(utcMinutes / 60)).padStart(2, '0')}:{String(utcMinutes % 60).padStart(2, '0')}</output></div><Slider aria-labelledby="globe-time-label" value={[utcMinutes]} onValueChange={(value) => setUtcMinutes(Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
         </div>
         <div className="globe-layout">
           <div className="globe-stage">
-            <svg className="solar-globe" viewBox="0 0 600 600" role="application" aria-label="Interactive globe. Drag to rotate, click to select. Arrow keys rotate; Enter selects the center." tabIndex={0} onKeyDown={keyboard}
+            <svg className="solar-globe" viewBox="0 0 600 600" role="application" aria-label={t("Interactive globe. Drag to rotate, click to select. Arrow keys rotate; Enter selects the center.")} tabIndex={0} onKeyDown={keyboard}
               onPointerDown={(event) => { if (!pointAt(event)) return; drag.current = { x: event.clientX, y: event.clientY, view, moved: false }; event.currentTarget.setPointerCapture(event.pointerId); }}
               onPointerMove={move} onPointerCancel={() => { drag.current = null; }}
               onPointerUp={(event) => { const moved = drag.current?.moved; const started = !!drag.current; drag.current = null; if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); if (started && !moved) { const point = pointAt(event); if (point) void selectPoint(point); } }}>
@@ -105,30 +108,31 @@ export default function SolarGlobe({ location, year, onPick }: {
               <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="url(#ocean)" stroke="#6b9484" />
               <circle className="globe-focus" cx={CENTER} cy={CENTER} r={RADIUS + 9} aria-hidden="true" />
               <g clipPath="url(#earth-disk)" aria-hidden="true"><path d={grid} fill="none" stroke="#729686" strokeWidth=".65" opacity=".5" /><path d={outline} fill="none" stroke="#3c705b" strokeWidth="1.2" strokeLinejoin="round" /><path d={nightPath(sun)} transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="#182d3c" opacity=".65" /></g>
-              {[60, 30, 0, -30, -60].map((latitude) => { const p = project({ latitude, longitude: view.longitude }, view); return p.z > .2 ? <text key={latitude} x={CENTER + 7} y={CENTER - RADIUS * p.y - 5} className="globe-latitude" aria-hidden="true">{latitude === 0 ? 'Equator' : `${Math.abs(latitude)}°${latitude > 0 ? 'N' : 'S'}`}</text> : null; })}
+              {[60, 30, 0, -30, -60].map((latitude) => { const p = project({ latitude, longitude: view.longitude }, view); return p.z > .2 ? <text key={latitude} x={CENTER + 7} y={CENTER - RADIUS * p.y - 5} className="globe-latitude" aria-hidden="true">{latitude === 0 ? t('Equator') : `${Math.abs(latitude)}°${latitude > 0 ? 'N' : 'S'}`}</text> : null; })}
               {marker.z >= 0 && <g aria-hidden="true"><circle cx={CENTER + RADIUS * marker.x} cy={CENTER - RADIUS * marker.y} r="6" fill={picking ? '#b48439' : '#ae553a'} stroke="#fff" strokeWidth="2" /></g>}
               <path d={`M${CENTER - 5},${CENTER}h10M${CENTER},${CENTER - 5}v10`} stroke="#3d5349" strokeWidth=".8" opacity=".6" aria-hidden="true" />
-              {!sideSun && <text x="300" y="70" textAnchor="middle" className="globe-sun-caption">{sun.z > 0 ? 'Sunlight from the viewer’s direction' : 'Sunlight from behind the globe'}</text>}
+              {!sideSun && <text x="300" y="70" textAnchor="middle" className="globe-sun-caption">{t(sun.z > 0 ? 'Sunlight from the viewer’s direction' : 'Sunlight from behind the globe')}</text>}
             </svg>
-            {mapError && <p className="fact-note">Coastlines could not load. Place selection still works.</p>}
+            {mapError && <p className="fact-note">{t("Coastlines could not load. Place selection still works.")}</p>}
           </div>
           <div className="globe-results" aria-live="polite" aria-busy={picking}>
             <div className="globe-location">
               <p className="globe-place">{location.name}</p>
-              <p className="globe-place-meta">{[location.country, `${Math.round(location.elevation).toLocaleString('en')} m elevation`].filter(Boolean).join(' · ')}</p>
-              <p className="globe-local">{localLabel} · local time</p>
-              {location.selectionDistanceKm !== undefined && <p className="globe-selection-note">Nearest mapped place · {location.selectionDistanceKm < 1 ? 'less than 1' : Math.round(location.selectionDistanceKm).toLocaleString('en')} km from your selection</p>}
+              <p className="globe-place-meta">{[location.country, t('{height} m elevation', { height: number(location.elevation) })].filter(Boolean).join(' · ')}</p>
+              <p className="globe-local">{localLabel} · {t('local time')}</p>
+              {location.selectionDistanceKm !== undefined && <p className="globe-selection-note">{t('Nearest mapped place · {distance} km from your selection', { distance: location.selectionDistanceKm < 1 ? t('less than 1') : number(location.selectionDistanceKm) })}</p>}
             </div>
-            {picking && <p className="fact-note globe-status">Finding the nearest town and its elevation…</p>}
-            {pickError && <p className="globe-error" role="alert">{pickError}</p>}
-            <div className="peak-stat"><span>Theoretical UV now</span><strong>{currentUv.toFixed(1)}</strong></div>
-            <div className="peak-stat"><span>Theoretical UV peak</span><strong>{result.maxUv.toFixed(1)}</strong><small>Selected local day</small></div>
-            <div className="peak-stat window-stat"><span>Low-UV window</span><strong>{formatLowWindow(result.lowWindows)}</strong><small>UVI below 3 · local time</small></div>
+            {picking && <p className="fact-note globe-status">{t("Finding the nearest town and its elevation…")}</p>}
+            {pickError && <p className="globe-error" role="alert">{t(pickError)}</p>}
+            <div className="peak-stat"><span>{t("Theoretical UV now")}</span><strong>{number(currentUv, 1)}</strong></div>
+            <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(result.maxUv, 1)}</strong><small>{t("Selected local day")}</small></div>
+            <div className="peak-stat window-stat"><span>{t("Low-UV window")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t("UVI below 3 · local time")}</small></div>
           </div>
         </div>
-        <p className="fact-note">Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.</p>
-        <p className="fact-note globe-index-note">Globe selections use the nearest place in <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>’ town and city index. Results apply to that place; small villages and landmarks may be absent. <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>.</p>
-        <details className="evidence"><summary>Sources and model</summary><div className="evidence-content"><p className="fact-note">Solar geometry: <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">NOAA</a>. UV: <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich</a>. Altitude: <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">WHO</a> and <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">JMA</a> give approximate rules; actual mountain conditions vary. Elevation: <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo</a>. Coastlines: <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">Natural Earth, public domain</a>. The globe’s clock is UTC; results use the selected place’s local date and time. Dates use the {year} calendar.</p></div></details>
+        <details className="evidence"><summary>{t("Sources and model")}</summary><div className="evidence-content">
+        <p className="fact-note">{t("Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.")}</p>
+        <p className="fact-note globe-index-note">{t("Globe selections use the nearest place in")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">{t("GeoNames")}</a>{t("’ town and city index. Results apply to that place; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a>.</p>
+        <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t('The globe’s clock is UTC; results use the selected place’s local date and time. Dates use the {year} calendar.', { year })}</p></div></details>
       </div>
     </section>
   );

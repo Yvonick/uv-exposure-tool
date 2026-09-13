@@ -28,9 +28,11 @@ import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
 import { ChartHoverSurface, FloatingChartTooltip } from './chart-hover';
+import { LanguageSwitcher, useLanguage } from './language';
+import { defaultLocations } from '@/lib/languages';
 import { daylightChartRange, daylightChartTicks } from '@/lib/daylight-chart';
-import { buildAnnualData, formatHour, formatLowWindow, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
-import { DEFAULT_LOCATION, formatLocationLabel, lookupLocations, lookupLocation, resolveNearestPlace, type Location } from '@/lib/locations';
+import { buildAnnualData, formatHour, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
+import { formatLocationLabel, lookupLocations, lookupLocation, resolveNearestPlace, type Location } from '@/lib/locations';
 import {
   Combobox,
   ComboboxContent,
@@ -85,40 +87,25 @@ type DaylightResponse = {
   };
 };
 
-const chartConfig = {
+const annualChartStyle = {
   protection: {
     label: 'Sun protection recommended',
     color: '#8dac9e',
   },
 } satisfies ChartConfig;
 
-const todayChartConfig = {
+const todayChartStyle = {
   pastMeanUv: { label: 'Estimated hourly mean', color: '#5f5f5f' },
   forecastMeanUv: { label: 'Forecast hourly mean', color: '#c4c4c4' },
   peakUv: { label: 'Highest sampled UV', color: '#226047' },
 } satisfies ChartConfig;
 
-const months = [
-  'Jan',
-  'Feb',
-  'Mar',
-  'Apr',
-  'May',
-  'Jun',
-  'Jul',
-  'Aug',
-  'Sep',
-  'Oct',
-  'Nov',
-  'Dec',
-];
-
 function uvBand(uv: number) {
-  if (uv < 3) return { label: 'Low', action: 'Sunscreen usually not needed', tone: 'low' };
-  if (uv < 6) return { label: 'Moderate', action: 'Sun protection recommended', tone: 'moderate' };
-  if (uv < 8) return { label: 'High', action: 'Protection is important', tone: 'high' };
-  if (uv < 11) return { label: 'Very high', action: 'Extra protection needed', tone: 'very-high' };
-  return { label: 'Extreme', action: 'Avoid unprotected exposure', tone: 'extreme' };
+  if (uv < 3) return { label: 'Low', tone: 'low' };
+  if (uv < 6) return { label: 'Moderate', tone: 'moderate' };
+  if (uv < 8) return { label: 'High', tone: 'high' };
+  if (uv < 11) return { label: 'Very high', tone: 'very-high' };
+  return { label: 'Extreme', tone: 'extreme' };
 }
 
 function formatLocalTime(timezone: string) {
@@ -248,6 +235,7 @@ function buildHourlyExposure(
 }
 
 function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: AnnualPoint }> }) {
+  const { t, number, lowWindow } = useLanguage();
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
 
@@ -255,31 +243,36 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
     <FloatingChartTooltip>
       <p className="chart-tooltip-date">{point.date}</p>
       <p className="chart-tooltip-main">
-        {formatLowWindow(point.lowWindows)} · UVI below 3
+        {lowWindow(point.lowWindows)} · {t('UVI below 3')}
       </p>
-      <p className="chart-tooltip-note">Theoretical UV peak · {point.maxUv.toFixed(1)} UVI</p>
+      <p className="chart-tooltip-note">{t('Theoretical UV peak')} · {number(point.maxUv, 1)} {t("UVI")}</p>
     </FloatingChartTooltip>
   );
 }
 
 function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DailyUvPoint }> }) {
+  const { t, number } = useLanguage();
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
 
   return (
     <FloatingChartTooltip className="daily-tooltip">
       <p className="chart-tooltip-date">{point.label}</p>
-      <p className="chart-tooltip-main">Estimated mean · {point.meanUv.toFixed(1)} UVI</p>
-      <p className="chart-tooltip-note">Highest sampled · {point.peakUv.toFixed(1)} UVI</p>
+      <p className="chart-tooltip-main">{t('Estimated mean')} · {number(point.meanUv, 1)} {t("UVI")}</p>
+      <p className="chart-tooltip-note">{t('Highest sampled')} · {number(point.peakUv, 1)} {t("UVI")}</p>
       <p className="chart-tooltip-note">
-        {point.phase === 'past' ? 'Completed hour' : point.phase === 'current' ? 'Current hour' : 'Forecast hour'}
+        {t(point.phase === 'past' ? 'Completed hour' : point.phase === 'current' ? 'Current hour' : 'Forecast hour')}
       </p>
     </FloatingChartTooltip>
   );
 }
 
-export default function Home() {
-  const [location, setLocation] = useState(DEFAULT_LOCATION);
+export default function Dashboard() {
+  const { language, locale, t, number } = useLanguage();
+  const chartConfig = { protection: { ...annualChartStyle.protection, label: t(annualChartStyle.protection.label) } };
+  const todayChartConfig = Object.fromEntries(Object.entries(todayChartStyle).map(([key, item]) => [key, { ...item, label: t(item.label) }]));
+  const [location, setLocation] = useState<Location>(defaultLocations[language]);
+  const months = useMemo(() => Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, month, 1)))), [locale]);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Location[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -294,7 +287,7 @@ export default function Home() {
   const calendarDate = localCalendarDate(location.timezone);
   const year = calendarDate.year;
 
-  const annualData = useMemo(() => buildAnnualData(location, year), [location, year]);
+  const annualData = useMemo(() => buildAnnualData(location, year, locale), [location, year, locale]);
   const peakPoint = useMemo(
     () => annualData.reduce((peak, point) => (point.maxUv > peak.maxUv ? point : peak)),
     [annualData],
@@ -313,7 +306,7 @@ export default function Home() {
   );
   const currentAnnualPoint = annualData[calendarDate.dayIndex] ?? null;
   const lowSeason = useMemo(() => allDayLowSeason(annualData), [annualData]);
-  const annualMonthTicks = useMemo(() => months.map((_, month) => (Date.UTC(year, month, 1) - Date.UTC(year, 0, 1)) / 86_400_000), [year]);
+  const annualMonthTicks = useMemo(() => months.map((_, month) => (Date.UTC(year, month, 1) - Date.UTC(year, 0, 1)) / 86_400_000), [year, months]);
 
   useEffect(() => () => locationController.current?.abort(), []);
 
@@ -333,7 +326,7 @@ export default function Home() {
     const controller = new AbortController();
     const debounce = window.setTimeout(async () => {
       try {
-        const matches = await lookupLocations(candidate, 6, controller.signal);
+        const matches = await lookupLocations(candidate, 6, controller.signal, language);
         if (!controller.signal.aborted) setSuggestions(matches);
       } catch (suggestionError) {
         if ((suggestionError as Error).name !== 'AbortError') setSuggestions([]);
@@ -346,7 +339,7 @@ export default function Home() {
       window.clearTimeout(debounce);
       controller.abort();
     };
-  }, [query, location]);
+  }, [query, location, language]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -464,7 +457,7 @@ export default function Home() {
                 throw new Error('location must be a string with at least two characters');
               }
               const locationQuery = candidate.location.trim();
-              const nextLocation = await resolveAndChoose((signal) => lookupLocation(locationQuery, signal));
+              const nextLocation = await resolveAndChoose((signal) => lookupLocation(locationQuery, signal, language));
               return {
                 dashboardUpdated: true,
                 location: nextLocation.name,
@@ -529,11 +522,11 @@ export default function Home() {
     event.preventDefault();
     const candidate = query.trim();
     if (candidate.length < 2 || candidate === formatLocationLabel(location)) return;
-    try { await resolveAndChoose((signal) => lookupLocation(candidate, signal)); } catch { /* Error is displayed above. */ }
+    try { await resolveAndChoose((signal) => lookupLocation(candidate, signal, language)); } catch { /* Error is displayed above. */ }
   }
 
   const currentBand = current?.isDay === false
-    ? { label: 'Night', action: 'Sun below the horizon', tone: 'night' }
+    ? { label: 'Night', tone: 'night' }
     : uvBand(current?.uv ?? 0);
   const todayScale = dailyUvScale(current?.day ?? []);
   const currentHour = current ? decimalHour(current.time) : 0;
@@ -542,11 +535,12 @@ export default function Home() {
 
   return (
     <main className="app-shell">
+      <LanguageSwitcher />
       <header className="dashboard-header" id="top">
         <div className="location-heading">
           <div className="title-search">
         <form className="location-search" onSubmit={searchLocation}>
-          <label className="location-label" htmlFor="location-search">Enter a location</label>
+          <label className="location-label" htmlFor="location-search">{t("Enter a location")}</label>
           <div className="search-row">
             <MapPin className="search-pin" aria-hidden="true" />
             <Combobox
@@ -566,19 +560,19 @@ export default function Home() {
               <ComboboxInput
                 id="location-search"
                 className="location-input"
-                placeholder="City or place"
+                placeholder={t("City or place")}
                 autoComplete="off"
                 showTrigger={false}
-                aria-label="City, place, or latitude and longitude"
+                aria-label={t("City, place, or latitude and longitude")}
                 aria-busy={loadingSuggestions}
               />
               <ComboboxContent className="location-suggestions">
                 <ComboboxEmpty className="location-suggestion-status">
-                  {loadingSuggestions
+                  {t(loadingSuggestions
                     ? 'Searching locations…'
                     : query.trim().length < 2
                       ? 'Type at least two characters'
-                      : 'No matching locations'}
+                      : 'No matching locations')}
                 </ComboboxEmpty>
                 <ComboboxList>
                   {suggestions.map((suggestion, index) => (
@@ -600,31 +594,30 @@ export default function Home() {
                 </ComboboxList>
               </ComboboxContent>
             </Combobox>
-            <Button className="search-button" type="submit" disabled={loadingLocation} aria-label="Find location">
+            <Button className="search-button" type="submit" disabled={loadingLocation} aria-label={t("Find location")}>
               {loadingLocation ? <LoaderCircle className="spin" /> : <Search />}
             </Button>
           </div>
-          <p className="coordinate-hint">Or enter latitude, longitude · e.g. 52.52, 13.41</p>
+          <p className="coordinate-hint">{t("Or enter latitude, longitude · e.g. 52.52, 13.41")}</p>
           <div className="location-meta">
             <p className="location-result">
-              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {Math.round(location.elevation)} m
-            </p>
-            <p className="location-clock"><span>Local time</span><time>{localTime}</time></p>
+              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {Math.round(location.elevation)} {t("m")} </p>
+            <p className="location-clock"><span>{t("Local time")}</span><time>{localTime}</time></p>
           </div>
         </form>
           </div>
         </div>
-        <section className="live-compact" aria-label="Live UV conditions">
+        <section className="live-compact" aria-label={t("Live UV conditions")}>
           <div className={`live-reading uv-${currentBand.tone}`}>
-            <p className="orb-kicker">UV now</p>
-            {loadingUv ? <LoaderCircle className="spin live-loader" aria-label="Loading current UV" /> : <p className="uv-number">{current?.uv.toFixed(1) ?? '—'}</p>}
-            <p className="uv-band">{current ? currentBand.label : 'Unavailable'}</p>
-            <p className="updated">{current?.time.slice(11, 16) ?? '—'} · estimate</p>
+            <p className="orb-kicker">{t("UV now")}</p>
+            {loadingUv ? <LoaderCircle className="spin live-loader" aria-label={t("Loading current UV")} /> : <p className="uv-number">{current ? number(current.uv, 1) : '—'}</p>}
+            <p className="uv-band">{t(current ? currentBand.label : 'Unavailable')}</p>
+            <p className="updated">{current?.time.slice(11, 16) ?? '—'} {t("· estimate")}</p>
           </div>
           <div className="live-timeline">
             <div className="day-chart-header">
-              <p>Today</p>
-              <div className="day-legend"><span><i className="past-line" /> Past</span><span><i className="forecast-line" /> Forecast</span><span><i className="peak-dot" /> Highest sample</span></div>
+              <p>{t("Today")}</p>
+              <div className="day-legend"><span><i className="past-line" /> {t("Past")}</span><span><i className="forecast-line" /> {t("Forecast")}</span><span><i className="peak-dot" /> {t("Highest sample")}</span></div>
             </div>
             {current?.day.length ? (
               <ChartHoverSurface>
@@ -649,7 +642,7 @@ export default function Home() {
                     x={currentHour}
                     stroke="#226047"
                     strokeDasharray="3 4"
-                    label={{ value: 'NOW', position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
+                    label={{ value: t('NOW'), position: 'insideTopRight', fill: '#226047', fontSize: 9 }}
                   />}
                   <Tooltip content={<DailyTooltip />} isAnimationActive={false} wrapperStyle={{ pointerEvents: 'none' }} cursor={{ stroke: '#9aafa3', strokeDasharray: '3 4' }} />
                   <Line type="monotone" dataKey="pastMeanUv" stroke="#507c67" strokeWidth={2} dot={false} activeDot={{ r: 3 }} isAnimationActive={false} />
@@ -659,29 +652,29 @@ export default function Home() {
               </ChartContainer>
               </ChartHoverSurface>
             ) : (
-              <div className="day-chart-empty">Hourly data unavailable</div>
+              <div className="day-chart-empty">{t("Hourly data unavailable")}</div>
             )}
-            <a className="live-source" href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">Data: Open-Meteo / CAMS ↗</a>
+            <a className="live-source" href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">{t("Data: Open-Meteo / CAMS ↗")}</a>
           </div>
         </section>
       </header>
-      {(error || liveError) && <div className="error-banner" role="alert"><Info aria-hidden="true" />{error || liveError}</div>}
+      {(error || liveError) && <div className="error-banner" role="alert"><Info aria-hidden="true" />{t(error || liveError)}</div>}
 
       <section className="year-section" aria-labelledby="year-title">
         <div className="year-heading">
           <div className="year-title-group">
-            <h1 id="year-title">UV through the year</h1>
+            <h1 id="year-title">{t("UV through the year")}</h1>
           </div>
           <div className="year-stats">
-            <div className="peak-stat"><span>Theoretical UV peak</span><strong>{peakPoint.maxUv.toFixed(1)}</strong><small>{peakPoint.date} · {year}</small></div>
-            <div className="peak-stat window-stat"><span>Low UV all day</span><strong>{lowSeason === 'Low UV all year' ? 'All year' : lowSeason === 'No all-day low-UV season' ? 'No period this year' : lowSeason}</strong><small>Theoretical UVI stays below 3 · {year}</small></div>
+            <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(peakPoint.maxUv, 1)}</strong><small>{peakPoint.date} · {year}</small></div>
+            <div className="peak-stat window-stat"><span>{t("Low UV all day")}</span><strong>{t(lowSeason === 'Low UV all year' ? 'All year' : lowSeason === 'No all-day low-UV season' ? 'No period this year' : lowSeason)}</strong><small>{t('Theoretical UVI stays below 3')} · {year}</small></div>
           </div>
         </div>
 
         <div className="chart-panel">
-          <div className="chart-legend" aria-label="Chart legend">
-            <span><i className="legend-low" /> Low UV · below 3</span>
-            <span><i className="legend-protect" /> Protection recommended · UVI 3+</span>
+          <div className="chart-legend" aria-label={t("Chart legend")}>
+            <span><i className="legend-low" /> {t("Low UV · below 3")}</span>
+            <span><i className="legend-protect" /> {t("Protection recommended · UVI 3+")}</span>
           </div>
           <div className="chart-scroll">
             <ChartHoverSurface>
@@ -719,7 +712,7 @@ export default function Home() {
                     x={currentAnnualPoint.day}
                     stroke="#111111"
                     strokeWidth={1.4}
-                    label={{ value: 'TODAY', position: currentAnnualPoint.day > annualData.length * 0.85 ? 'insideTopLeft' : 'insideTopRight', fill: '#111111', fontSize: 12 }}
+                    label={{ value: t('TODAY'), position: currentAnnualPoint.day > annualData.length * 0.85 ? 'insideTopLeft' : 'insideTopRight', fill: '#111111', fontSize: 12 }}
                   />
                 )}
                 {lowSeasonEnd && (
@@ -752,33 +745,31 @@ export default function Home() {
             </ChartHoverSurface>
           </div>
           <div className="chart-caption">
-            <p>Theoretical daily windows · clear sky · {Math.round(location.elevation)} m. <a href="#method">Method</a></p>
-            <p>Local time</p>
+            <p>{t('Theoretical daily windows · clear sky')} · {number(location.elevation)} {t("m.")} <a href="#method">{t("Method")}</a></p>
+            <p>{t("Local time")}</p>
           </div>
         </div>
       </section>
 
       <UvFacts />
-      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveNearestPlace(latitude, longitude, signal))} />
+      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveNearestPlace(latitude, longitude, signal, language))} />
 
       <section className="method-section" id="method">
         <div className="method-copy">
-          <h2>Method and sources</h2>
-          <p>
-            The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. It focuses on daylight, retaining one complete nighttime hour before sunrise and after sunset; polar conditions or unavailable sunrise/sunset times retain the full day. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.
-          </p>
+          <h2>{t("Method and sources")}</h2>
+          <p> {t("The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. It focuses on daylight, retaining one complete nighttime hour before sunrise and after sunset; polar conditions or unavailable sunrise/sunset times retain the full day. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.")} </p>
         </div>
         <div className="sources">
 
-          <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">WHO · UV Index guidance <ArrowRight /></a>
-          <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich · clear-sky formula <ArrowRight /></a>
-          <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo · elevation <ArrowRight /></a>
-          <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">CAMS / Open-Meteo · UV data <ArrowRight /></a>
+          <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">{t("WHO · UV Index guidance")} <ArrowRight /></a>
+          <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich · clear-sky formula")} <ArrowRight /></a>
+          <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo · elevation")} <ArrowRight /></a>
+          <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">{t("CAMS / Open-Meteo · UV data")} <ArrowRight /></a>
         </div>
       </section>
 
       <footer>
-        <a className="brand footer-brand" href="#top"><span>UV EXPOSURE TOOL</span></a>
+        <a className="brand footer-brand" href="#top"><span>{t("UV EXPOSURE TOOL")}</span></a>
         <p>{year}</p>
       </footer>
     </main>

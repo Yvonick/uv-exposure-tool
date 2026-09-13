@@ -39,10 +39,10 @@ export async function resolveCoordinates(latitude: number, longitude: number, si
   return location;
 }
 
-export async function lookupLocations(query: string, count = 6, signal?: AbortSignal): Promise<Location[]> {
+export async function lookupLocations(query: string, count = 6, signal?: AbortSignal, language = 'en'): Promise<Location[]> {
   const coordinates = parseCoordinates(query);
   if (coordinates) return [await resolveCoordinates(coordinates.latitude, coordinates.longitude, signal)];
-  const params = new URLSearchParams({ name: query, count: String(count), language: 'en', format: 'json' });
+  const params = new URLSearchParams({ name: query, count: String(count), language, format: 'json' });
   const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal });
   if (!response.ok) throw new Error('Location search is temporarily unavailable. Please try again.');
   const data = await response.json() as { results?: Location[] };
@@ -51,8 +51,8 @@ export async function lookupLocations(query: string, count = 6, signal?: AbortSi
   }));
 }
 
-export async function lookupLocation(query: string, signal?: AbortSignal): Promise<Location> {
-  const [location] = await lookupLocations(query, 1, signal);
+export async function lookupLocation(query: string, signal?: AbortSignal, language = 'en'): Promise<Location> {
+  const [location] = await lookupLocations(query, 1, signal, language);
   if (!location) throw new Error('No matching place found. Try a city and country, or latitude, longitude.');
   return location;
 }
@@ -75,7 +75,7 @@ export function nearestPlace(places: NamedPlace[], latitude: number, longitude: 
   return { place: nearest, distanceKm: 6371.0088 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, minimum)))) };
 }
 
-export async function resolveNearestPlace(latitude: number, longitude: number, signal?: AbortSignal): Promise<Location> {
+export async function resolveNearestPlace(latitude: number, longitude: number, signal?: AbortSignal, language = 'en'): Promise<Location> {
   signal?.throwIfAborted();
   if (!placeIndex) {
     const response = await fetch('/data/places.json', { signal });
@@ -92,5 +92,5 @@ export async function resolveNearestPlace(latitude: number, longitude: number, s
   // Resolve metadata at the named place, never relabel the original clicked point.
   const metadata = await resolveCoordinates(place[2], place[3], signal);
   signal?.throwIfAborted();
-  return { ...metadata, name: place[0], country: new Intl.DisplayNames(['en'], { type: 'region' }).of(place[1]) ?? place[1], selectionDistanceKm: distanceKm };
+  return { ...metadata, name: place[0], country: new Intl.DisplayNames([language], { type: 'region' }).of(place[1]) ?? place[1], selectionDistanceKm: distanceKm };
 }

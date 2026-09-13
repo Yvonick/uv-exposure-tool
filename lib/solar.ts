@@ -83,12 +83,12 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
   return { maxUv, solarNoon, protectionWindows, lowWindows };
 }
 
-export function buildAnnualData(location: SolarLocation, year: number): AnnualPoint[] {
+export function buildAnnualData(location: SolarLocation, year: number, locale = 'en'): AnnualPoint[] {
   return Array.from({ length: daysInYear(year) }, (_, day) => {
     const date = new Date(Date.UTC(year, 0, day + 1, 12));
     const model = dailyModel(location, date);
     const [first, second] = model.protectionWindows;
-    return { ...model, day, date: new Intl.DateTimeFormat('en', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date),
+    return { ...model, day, date: new Intl.DateTimeFormat(locale, { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date),
       base: first?.[0] ?? 0, protection: first ? first[1] - first[0] : 0,
       secondBase: second?.[0] ?? 0, secondProtection: second ? second[1] - second[0] : 0,
       start: first?.[0] ?? null, end: first?.[1] ?? null };
