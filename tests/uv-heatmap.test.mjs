@@ -38,4 +38,6 @@ test('threshold outlines enclose polar days and midnight intervals without inter
   const wrapped = protectionOutline([{ protectionWindows: [[0, 3], [21, 24]] }]);
   assert.ok(wrapped.includes('M0,24V21') && wrapped.includes('M0,3V0'));
   assert.ok(!wrapped.includes('NaN'));
+  const outline = start => protectionOutline([{ protectionWindows: [[start, 17.123456789]] }]);
+  assert.equal(outline(9.123456789), outline(9.123456789 + 1e-13));
 });

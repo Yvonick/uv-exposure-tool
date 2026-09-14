@@ -25,9 +25,12 @@ export function uvColor(value: number): readonly number[] {
 // Outline the union of daily UVI >= 3 intervals, including polar and midnight cases.
 export function protectionOutline(days: { protectionWindows: Interval[] }[]) {
   const segments: string[] = [];
+  // Trig implementations can differ in their last bits between server and browser.
+  // Sub-second rounding keeps SSR attributes stable, well below a visible pixel.
+  const y = (hour: number) => Number((24 - hour).toFixed(6));
   for (let day = 0; day < days.length; day++) {
     for (const [start, end] of days[day].protectionWindows) {
-      segments.push(`M${day},${24 - start}H${day + 1}`, `M${day},${24 - end}H${day + 1}`);
+      segments.push(`M${day},${y(start)}H${day + 1}`, `M${day},${y(end)}H${day + 1}`);
     }
   }
   for (let day = 0; day <= days.length; day++) {
@@ -37,7 +40,7 @@ export function protectionOutline(days: { protectionWindows: Interval[] }[]) {
     for (let i = 1; i < edges.length; i++) {
       const middle = (edges[i - 1] + edges[i]) / 2;
       const inside = (windows: Interval[]) => windows.some(([a, b]) => a < middle && middle < b);
-      if (inside(left) !== inside(right)) segments.push(`M${day},${24 - edges[i - 1]}V${24 - edges[i]}`);
+      if (inside(left) !== inside(right)) segments.push(`M${day},${y(edges[i - 1])}V${y(edges[i])}`);
     }
   }
   return segments.join('');
