@@ -653,7 +653,8 @@ export default function Dashboard() {
       <section className="method-section" id="method">
         <div className="method-copy">
           <h2>{t("Method and sources")}</h2>
-          <p>{t(modelNotes.general)} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">WHO ↗</a></p>
+          <p>{t(modelNotes.sourceChoice)}</p>
+          <p>{t(modelNotes.sourceComparison)}</p>
         </div>
       </section>
 
