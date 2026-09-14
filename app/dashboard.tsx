@@ -2,7 +2,6 @@
 
 import { SyntheticEvent, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ArrowRight,
   Check,
   Info,
   LoaderCircle,
@@ -10,8 +9,6 @@ import {
   Search,
 } from 'lucide-react';
 import {
-  Area,
-  AreaChart,
   Line,
   CartesianGrid,
   ComposedChart,
@@ -27,12 +24,13 @@ import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
+import AnnualHeatmap from './annual-heatmap';
 import { modelNotes } from '@/lib/translations';
 import { ChartHoverSurface, FloatingChartTooltip } from './chart-hover';
 import { LanguageSwitcher, useLanguage } from './language';
 import { defaultLocations } from '@/lib/languages';
 import { daylightChartRange, daylightChartTicks } from '@/lib/daylight-chart';
-import { buildAnnualData, formatHour, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
+import { buildAnnualData, formatHour, allDayLowSeason } from '@/lib/solar';
 import { formatLocationLabel, lookupLocations, lookupLocation, resolveGlobeLocation, type Location } from '@/lib/locations';
 import {
   Combobox,
@@ -87,13 +85,6 @@ type DaylightResponse = {
     sunset: Array<string | null>;
   };
 };
-
-const annualChartStyle = {
-  protection: {
-    label: 'Sun protection recommended',
-    color: '#8dac9e',
-  },
-} satisfies ChartConfig;
 
 const todayChartStyle = {
   pastMeanUv: { label: 'Estimated hourly mean', color: '#5f5f5f' },
@@ -235,24 +226,6 @@ function buildHourlyExposure(
   };
 }
 
-function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: AnnualPoint }> }) {
-  const { t, number, lowWindow } = useLanguage();
-  const point = payload?.[0]?.payload;
-  if (!active || !point) return null;
-
-  return (
-    <FloatingChartTooltip>
-      <p className="chart-tooltip-date">{point.date}</p>
-      <p className="chart-tooltip-main">
-        {lowWindow(point.lowWindows)} · {t('UVI below 3')}
-      </p>
-      <p className="chart-tooltip-note">{t('Theoretical UV peak')} · {number(point.maxUv, 1)} {t("UVI")}</p>
-      <p className="chart-tooltip-note">{t('Maximum sun angle')} · {point.daylightSolarElevation ? `${number(point.daylightSolarElevation.max, 1)}°` : t('No daylight')}</p>
-      <p className="chart-tooltip-note">{t('0° at the horizon · 90° overhead')}</p>
-    </FloatingChartTooltip>
-  );
-}
-
 function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: DailyUvPoint }> }) {
   const { t, number } = useLanguage();
   const point = payload?.[0]?.payload;
@@ -272,10 +245,8 @@ function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{
 
 export default function Dashboard() {
   const { language, locale, t, number } = useLanguage();
-  const chartConfig = { protection: { ...annualChartStyle.protection, label: t(annualChartStyle.protection.label) } };
   const todayChartConfig = Object.fromEntries(Object.entries(todayChartStyle).map(([key, item]) => [key, { ...item, label: t(item.label) }]));
   const [location, setLocation] = useState<Location>(defaultLocations[language]);
-  const months = useMemo(() => Array.from({ length: 12 }, (_, month) => new Intl.DateTimeFormat(locale, { month: 'short', timeZone: 'UTC' }).format(new Date(Date.UTC(2026, month, 1)))), [locale]);
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState<Location[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
@@ -295,21 +266,7 @@ export default function Dashboard() {
     () => annualData.reduce((peak, point) => (point.maxUv > peak.maxUv ? point : peak)),
     [annualData],
   );
-  const lowSeasonEnd = useMemo(
-    () => annualData.find((point, index) => (
-      index > 0 && annualData[index - 1].start === null && point.start !== null
-    )) ?? null,
-    [annualData],
-  );
-  const lowSeasonStart = useMemo(
-    () => annualData.find((point, index) => (
-      index > 0 && annualData[index - 1].start !== null && point.start === null
-    )) ?? null,
-    [annualData],
-  );
-  const currentAnnualPoint = annualData[calendarDate.dayIndex] ?? null;
   const lowSeason = useMemo(() => allDayLowSeason(annualData), [annualData]);
-  const annualMonthTicks = useMemo(() => months.map((_, month) => (Date.UTC(year, month, 1) - Date.UTC(year, 0, 1)) / 86_400_000), [year, months]);
 
   useEffect(() => () => locationController.current?.abort(), []);
 
@@ -657,6 +614,7 @@ export default function Dashboard() {
             ) : (
               <div className="day-chart-empty">{t("Hourly data unavailable")}</div>
             )}
+            <details className="evidence live-evidence"><summary>{t("Sources and data")}</summary><div className="evidence-content"><p className="fact-note">{t(modelNotes.live)}</p><p className="fact-note">{t(modelNotes.liveWindow)}</p></div></details>
             <a className="live-source" href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">{t("Data: Open-Meteo / CAMS ↗")}</a>
           </div>
         </section>
@@ -675,103 +633,27 @@ export default function Dashboard() {
         </div>
 
         <div className="chart-panel">
-          <div className="chart-legend" aria-label={t("Chart legend")}>
-            <span><i className="legend-low" /> {t("Low UV · below 3")}</span>
-            <span><i className="legend-protect" /> {t("Protection recommended · UVI 3+")}</span>
-          </div>
-          <div className="chart-scroll">
-            <ChartHoverSurface>
-            <ChartContainer config={chartConfig} className="annual-chart" initialDimension={{ width: 980, height: 400 }}>
-              <AreaChart data={annualData} margin={{ top: 18, right: 12, bottom: 10, left: 0 }}>
-                <defs>
-                  <linearGradient id="protectFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#89aa9a" stopOpacity={0.9} />
-                    <stop offset="100%" stopColor="#b5c9bf" stopOpacity={0.78} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 6" />
-                <XAxis
-                  dataKey="day"
-                  type="number"
-                  domain={[0, annualData.length - 1]}
-                  ticks={annualMonthTicks}
-                  tickFormatter={(value) => months[annualMonthTicks.indexOf(value)] ?? ''}
-                  axisLine={false}
-                  tickLine={false}
-                  tickMargin={12}
-                  minTickGap={24}
-                />
-                <YAxis
-                  domain={[0, 24]}
-                  ticks={[0, 6, 12, 18, 24]}
-                  tickFormatter={(value) => `${String(value).padStart(2, '0')}:00`}
-                  axisLine={false}
-                  tickLine={false}
-                  width={54}
-                />
-                <ReferenceLine y={12} stroke="#226047" strokeOpacity={0.28} strokeDasharray="4 6" />
-                {currentAnnualPoint && (
-                  <ReferenceLine
-                    x={currentAnnualPoint.day}
-                    stroke="#111111"
-                    strokeWidth={1.4}
-                    label={{ value: t('TODAY'), position: currentAnnualPoint.day > annualData.length * 0.85 ? 'insideTopLeft' : 'insideTopRight', fill: '#111111', fontSize: 12 }}
-                  />
-                )}
-                {lowSeasonEnd && (
-                  <ReferenceLine
-                    x={lowSeasonEnd.day}
-                    stroke="#8b8b8b"
-                    strokeDasharray="3 4"
-                  />
-                )}
-                {lowSeasonStart && (
-                  <ReferenceLine
-                    x={lowSeasonStart.day}
-                    stroke="#8b8b8b"
-                    strokeDasharray="3 4"
-                  />
-                )}
-                <Tooltip content={<AnnualTooltip />} isAnimationActive={false} wrapperStyle={{ pointerEvents: 'none' }} cursor={{ stroke: '#226047', strokeWidth: 1 }} />
-                <Area dataKey="base" stackId="uv" stroke="none" fill="transparent" isAnimationActive={false} />
-                <Area
-                  dataKey="protection"
-                  stackId="uv"
-                  stroke="none"
-                  fill="url(#protectFill)"
-                  isAnimationActive={false}
-                />
-                <Area dataKey="secondBase" stackId="second" stroke="none" fill="transparent" isAnimationActive={false} />
-                <Area dataKey="secondProtection" stackId="second" stroke="none" fill="url(#protectFill)" isAnimationActive={false} />
-              </AreaChart>
-            </ChartContainer>
-            </ChartHoverSurface>
-          </div>
+          <AnnualHeatmap points={annualData} today={calendarDate.dayIndex} year={year} />
           <div className="chart-caption">
-            <p>{t('Theoretical daily windows · clear sky')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} <a href="#method">{t("Method")}</a></p>
+            <p>{t('Theoretical daily windows · clear sky')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} </p>
             <p>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</p>
           </div>
         </div>
+        <details className="evidence" id="annual-model"><summary>{t("Sources and model")}</summary><div className="evidence-content">
+          <p className="fact-note">{t(modelNotes.annual)} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich ↗</a></p>
+          <p className="fact-note">{t(modelNotes.annualAngles)} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">NOAA ↗</a></p>
+          <p className="fact-note">{t(modelNotes.heatmap)}</p>
+          <p className="fact-note">{t(modelNotes.elevation)} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo ↗</a> · <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">WHO ↗</a></p>
+        </div></details>
       </section>
 
-      <UvFacts />
       <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveGlobeLocation(latitude, longitude, signal, language))} />
+      <UvFacts />
 
       <section className="method-section" id="method">
         <div className="method-copy">
           <h2>{t("Method and sources")}</h2>
-          <p>{t(modelNotes.solarAngles)}</p>
-          <p>{t(modelNotes.globeSelection)}</p>
-          <p>{t(modelNotes.clock, { year })}</p>
-          <p> {t("The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. It focuses on daylight, retaining one complete nighttime hour before sunrise and after sunset; polar conditions or unavailable sunrise/sunset times retain the full day. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.")} </p>
-        </div>
-        <div className="sources">
-          <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">{t("NOAA · solar angles")} <ArrowRight /></a>
-
-          <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">{t("WHO · UV Index guidance")} <ArrowRight /></a>
-          <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich · clear-sky formula")} <ArrowRight /></a>
-          <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo · elevation")} <ArrowRight /></a>
-          <a href="https://open-meteo.com/en/docs/air-quality-api" target="_blank" rel="noreferrer">{t("CAMS / Open-Meteo · UV data")} <ArrowRight /></a>
+          <p>{t(modelNotes.general)} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index" target="_blank" rel="noreferrer">WHO ↗</a></p>
         </div>
       </section>
 

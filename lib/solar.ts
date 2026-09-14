@@ -3,6 +3,7 @@ export type Interval = [number, number];
 export type DailyModel = {
   maxUv: number; solarNoon: number; protectionWindows: Interval[]; lowWindows: Interval[];
   daylightSolarElevation: { min: number; max: number } | null;
+  uvCurve: { offset: number; amplitude: number; scale: number };
 };
 export type AnnualPoint = DailyModel & {
   day: number; date: string; base: number; protection: number; secondBase: number; secondProtection: number;
@@ -93,6 +94,7 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
   const a = Math.sin(phi) * Math.sin(declination);
   const b = Math.cos(phi) * Math.cos(declination);
   const scale = 12.5 * altitudeFactor(location.elevation);
+  const uvCurve = { offset: a, amplitude: b, scale };
   const maxUv = scale * Math.max(0, a + b) ** 2.42;
   const minUv = scale * Math.max(0, a - b) ** 2.42;
   const daylightSolarElevation = a + b <= 1e-12 ? null : {
@@ -100,8 +102,8 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
     max: Math.asin(Math.max(0, Math.min(1, a + b))) / radians,
   };
   const solarNoon = ((720 - 4 * location.longitude - equationOfTime + timezoneOffsetMinutes(date, location.timezone)) / 60 % 24 + 24) % 24;
-  if (maxUv < 3) return { maxUv, solarNoon, daylightSolarElevation, protectionWindows: [], lowWindows: [[0, 24]] };
-  if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, daylightSolarElevation, protectionWindows: [[0, 24]], lowWindows: [] };
+  if (maxUv < 3) return { maxUv, solarNoon, uvCurve, daylightSolarElevation, protectionWindows: [], lowWindows: [[0, 24]] };
+  if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, uvCurve, daylightSolarElevation, protectionWindows: [[0, 24]], lowWindows: [] };
   const cosine = Math.max(-1, Math.min(1, ((3 / scale) ** (1 / 2.42) - a) / b));
   const halfWidth = Math.acos(cosine) * 12 / Math.PI;
   const protectionWindows: Interval[] = [];
@@ -118,7 +120,13 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
     previous = end;
   }
   if (previous < 24) lowWindows.push([previous, 24]);
-  return { maxUv, solarNoon, daylightSolarElevation, protectionWindows, lowWindows };
+  return { maxUv, solarNoon, uvCurve, daylightSolarElevation, protectionWindows, lowWindows };
+}
+
+// Reuse the daily model so heatmap samples and the UVI 3 boundary agree exactly.
+export function uvAtLocalHour(model: DailyModel, hour: number) {
+  const { offset, amplitude, scale } = model.uvCurve;
+  return scale * Math.max(0, offset + amplitude * Math.cos((hour - model.solarNoon) * Math.PI / 12)) ** 2.42;
 }
 
 export function buildAnnualData(location: SolarLocation, year: number, locale = 'en'): AnnualPoint[] {

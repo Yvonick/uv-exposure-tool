@@ -20,7 +20,13 @@ export function ChartHoverSurface({ children }: { children: ReactNode }) {
     onPointerLeave={() => setPointer(null)}
     onFocusCapture={(event) => { if (!pointer) { const rect = event.currentTarget.getBoundingClientRect(); setPointer({ x: rect.left + rect.width / 2, y: rect.top }); } }}
     onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setPointer(null); }}
-    onKeyDownCapture={(event) => { if (event.key === 'Escape') setPointer(null); }}>
+    onKeyDownCapture={(event) => {
+      if (event.key === 'Escape') setPointer(null);
+      else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        setPointer({ x: rect.left + rect.width / 2, y: Math.max(16, rect.top) });
+      }
+    }}>
     <ChartPointer.Provider value={pointer}>{children}</ChartPointer.Provider>
   </div>;
 }

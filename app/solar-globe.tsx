@@ -147,11 +147,11 @@ export default function SolarGlobe({ location, year, onPick }: {
           </div>
         </div>
         <details className="evidence"><summary>{t("Sources and model")}</summary><div className="evidence-content">
-        <p className="fact-note">{t(modelNotes.solarAngles)} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a></p>
-        <p className="fact-note">{t("Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.")}</p>
-        <p className="fact-note">{t(modelNotes.globeSelection)}</p>
-        <p className="fact-note globe-index-note">{t("Place names:")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">{t("GeoNames")}</a>{t("’ town and city index; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a>.</p>
-        <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t(modelNotes.clock, { year })}</p></div></details>
+          <p className="fact-note">{t(modelNotes.solarAngles)} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a> · <a href="#annual-model" onClick={() => { const panel = document.getElementById("annual-model"); if (panel instanceof HTMLDetailsElement) panel.open = true; }}>{t("Yearly model assumptions")}</a></p>
+          <p className="fact-note">{t(modelNotes.globeSelection)}</p>
+          <p className="fact-note">{t(modelNotes.clock, { year })}</p>
+          <p className="fact-note globe-index-note">{t("Place names:")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>{t("’ town and city index; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. {t("Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>.</p>
+        </div></details>
       </div>
     </section>
   );

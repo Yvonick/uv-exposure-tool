@@ -9,12 +9,10 @@ import { DAILY_REFERENCE_SED, skinDoseRanges, standardErythemalDose } from '@/li
 
 const sources = {
   who: 'https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29',
-  protection: 'https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index',
   rivm: 'https://www.rivm.nl/bibliotheek/rapporten/2023-0426.pdf#page=19',
   arpansa: 'https://www.arpansa.gov.au/services/monitoring/ultraviolet-radiation-monitoring/ultraviolet-radiation-dose/ultraviolet',
   malaysia: 'https://pubmed.ncbi.nlm.nih.gov/29953669/',
   dna2018: 'https://doi.org/10.1016/j.jid.2018.04.015',
-  dna2025: 'https://pubmed.ncbi.nlm.nih.gov/40617063/',
   epa: 'https://www.epa.gov/sites/default/files/documents/uviguide.pdf',
   swiss: 'https://www.bag.admin.ch/fr/rayonnement-solaire',
   hko: 'https://www.hko.gov.hk/en/wxinfo/uvinfo/uvinfo.html',
@@ -77,13 +75,12 @@ export default function UvFacts() {
           </figure>
           <p className="fact-note">{t("1 SED is a fixed dose unit. ARPANSA’s 1 SED daily reference applies across the chart; it is not a damage-free limit or a new allowance for each outing. Sunburn thresholds vary by skin type, but validated “safe daily doses” for each type are not available.")}</p>
           <Evidence>
-            <Finding agency="DermNet · Fitzpatrick" href={phototypeSource}>{t("Phototype describes the skin’s response to sunlight, especially burning and tanning. The two portraits for each type are fictional AI-generated illustrations of broad skin-tone descriptions, with consistent framing and lighting. They are not clinical examples, a calibrated colour scale or the participants behind the chart’s SED ranges. DermNet supports the descriptions, not the generated faces.")}</Finding>
-            <Finding agency="RIVM" href={sources.rivm}>{t("These characteristic ranges (table 1) describe first redness assessed about a day later. Colour alone cannot predict an individual threshold.")}</Finding>
-            <Finding agency="ARPANSA" href={sources.arpansa}>{t("Describes 1 SED per day as safe for most people and advises considering protection beyond it, especially with fair skin. This is practical guidance, not a universal biological safety boundary.")}</Finding>
-            <Finding agency="Shih et al., 2018" href={sources.dna2018}>{t("DNA damage was detected at 20% of each participant’s individual sunburn dose. Darker skin showed greater protection in deeper layers; the findings do not establish a higher safe daily dose.")}</Finding>
-            <Finding agency="Charité, 2025" href={sources.dna2025}>{t("Exposure at 25% of individual sunburn dose also produced photodamage in a pilot study including types IV–V. The small groups and variability limit personal predictions.")}</Finding>
+            <Finding agency="DermNet · Fitzpatrick" href={phototypeSource}>{t("Phototypes describe burning and tanning response. DermNet supports these descriptions; the fictional AI portraits are illustrations, not clinical examples or a calibrated colour scale.")}</Finding>
+            <Finding agency="RIVM" href={sources.rivm}>{t("Characteristic first-redness ranges, assessed about a day later (table 1); not individual predictions.")}</Finding>
+            <Finding agency="ARPANSA" href={sources.arpansa}>{t("The 1 SED daily reference is practical guidance for most people, not a universal damage-free threshold.")}</Finding>
+            <Finding agency="Shih et al., 2018" href={sources.dna2018}>{t("DNA damage occurred at 20% of individual sunburn dose. A visible burn is not the first sign of biological damage.")}</Finding>
             <Finding agency="Wong et al., 2018" href={sources.malaysia}>{t("Among 167 volunteers with types III–V, phototype did not reliably distinguish the measured burn thresholds.")}</Finding>
-            <p className="fact-note">{t("Dose = UVI × minutes × 0.015 SED; 1 SED = 100 erythemally weighted J/m² (")}<Source href={sources.cie}>{t("CIE")}</Source>{t("). Assumes constant ambient UV; clothing, shade and orientation affect skin dose. This calculator does not track your whole day.")} <Source href={sources.protection}>{t("WHO recommends protection from UVI 3.")}</Source></p>
+            <p className="fact-note">{t("Dose = UVI × minutes × 0.015 SED; 1 SED = 100 erythemally weighted J/m² (")}<Source href={sources.cie}>{t("CIE")}</Source>{t("). Assumes constant ambient UV; clothing, shade and orientation affect skin dose. This calculator does not track your whole day.")}</p>
           </Evidence>
         </div>
       </section>
@@ -98,15 +95,15 @@ export default function UvFacts() {
           </div>
           <p className="fact-note"><strong>{t("The UV Index is linear.")}</strong> {t('+10% UV means UVI 3 → 3.3, or UVI 6 → 6.6. Each UVI unit represents the same increase in sunburn-weighted radiation.')} <Source href="https://www.cpc.ncep.noaa.gov/products/stratosphere/uv_index/uv_compute.shtml">{t("NOAA")}</Source></p>
           <Evidence>
-            <Finding agency="JMA" href={sources.jmaCloud}>{t("The percentages are averages from Japanese stations, not corrections for today. Broken cloud can occasionally increase UV beyond clear-sky levels.")}</Finding>
-            <Finding agency="FOPH" href={sources.swiss}>{t("Light cloud is reported to reduce UV by only about 5–10%. Cloud categories and conditions differ from the JMA averages.")}</Finding>
-            <Finding agency="EPA" href={sources.epa}>{t("Thin clouds let substantial UV through; cloud edges can enhance it. Ozone and airborne particles also affect UV, so there is no single cloud multiplier.")}</Finding>
+            <Finding agency="JMA" href={sources.jmaCloud}>{t("These percentages compare UV with clear sky: station averages for each cloud category, not corrections for today’s forecast.")}</Finding>
+            <Finding agency="FOPH" href={sources.swiss}>{t("Light cloud reduces UV by only about 5–10%; its categories and conditions differ from JMA’s.")}</Finding>
+            <Finding agency="EPA" href={sources.epa}>{t("Cloud edges can raise UV above clear-sky levels. Ozone and airborne particles also matter; no single cloud multiplier applies.")}</Finding>
           </Evidence>
         </div>
       </section>
 
       <section className="fact-section" aria-labelledby="ground-title" id="ground">
-        <div className="fact-heading"><h2 id="ground-title">{t("Ground and surroundings")}</h2></div>
+        <div className="fact-heading"><h2 id="ground-title">{t("Surfaces and reflected UV")}</h2></div>
         <div className="fact-content">
           <figure className="reflectance-chart">
             <figcaption className="reflection-legend"><span><i />{t("UV reflected")}</span><span><i className="hatched-key" />{t("Range across published estimates")}</span></figcaption>
@@ -128,9 +125,9 @@ export default function UvFacts() {
             <Finding agency="JMA" href={sources.jmaGround}>{t("Extensive snowfields can increase UVI by 40–50%: UVI 3 becomes about 4.2–4.5. Surface reflectance is not itself an increase in UVI; this example is not applied to the live forecast.")}</Finding>
             <Finding agency="FOPH" href={sources.swiss}>{t("Sand 5–25%, snow 40–90%, water 10–30%. These ranges include differences in surface conditions.")}</Finding>
             <Finding agency="EPA" href={sources.epa}>{t("Sand about 15%, water about 10%, snow up to 80%.")}</Finding>
-            <Finding agency="Hong Kong Observatory" href={sources.hko}>{t("Grass, soil and water below 10%; sand 10–25%; fresh snow around 80%. A “below 10%” estimate has no stated minimum.")} <Source href={sources.jmaGround}>{t("JMA")}</Source> {t("also gives fresh snow at 80% and beach sand up to 25%.")}</Finding>
-            <Finding agency="WHO" href={sources.who}>{t("Sea foam reflects about 25% of UV; fresh snow can almost double personal exposure.")}</Finding>
-            <p className="fact-note">{t("The chart combines published estimates, not statistical confidence intervals. Some agencies share underlying guidance. Sun angle, surface condition and body orientation affect personal exposure.")}</p>
+            <Finding agency="Hong Kong Observatory" href={sources.hko}>{t("Grass, soil and water below 10%; sand 10–25%; fresh snow around 80%.")}</Finding>
+            <Finding agency="WHO" href={sources.who}>{t("Sea foam reflects about 25% of UV.")}</Finding>
+            <p className="fact-note">{t("Hatching spans published estimates, not confidence intervals; sources may share underlying guidance. Sun angle, surface condition and body orientation affect exposure.")}</p>
           </Evidence>
         </div>
       </section>
