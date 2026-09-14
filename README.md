@@ -16,14 +16,16 @@ The linear UVI explanation sits below the sky metrics. Ground reflection shows o
 
 Hover or tap a skin-type label for two fictional portraits, explicitly marked as AI-generated illustrations in all three languages. A single twelve-person studio lineup keeps the framing, backdrop and lighting consistent; complete portrait tiles are shown without extra zoom. The portraits illustrate broad skin-tone descriptions, not clinical phototypes or personal UV thresholds. DermNet supports the descriptions; the dose chart retains its independent scientific sources. Asset provenance and the exact built-in generation prompt are recorded in `public/photos/skin-types/README.md` and `generation-prompt.txt`. Chart hover cards stay clear of the pointer and flip at viewport edges. UV Index is linear: a 10% increase turns UVI 3 into 3.3 and UVI 6 into 6.6; surface reflectance is not itself the percentage increase in UVI.
 
-The globe has date and UTC-time sliders, day/night shading and a soft cone of sunlight entering from offscreen. Drag or use arrow keys to rotate; click a point (or press Enter at the center) to select the nearest named place in a locally bundled GeoNames cities5000 index. The 69,700-place index loads only on the first selection and is reused. It covers towns/cities over 5,000 people and selected administrative seats, rather than every village or landmark. The page shows country, elevation and distance from the click, and calculates at the named place's coordinates. Results show instantaneous theoretical UV, the local day's maximum, and local low-UV hours. Its coastline outline is public-domain Natural Earth data; elevation comes from Copernicus / Open-Meteo. Place-data attribution, license and regeneration instructions are in `public/data/README.md`. The globe and annual chart share the same solar and altitude model, including polar and midnight-wrapping cases.
+The globe has local-date and local-time sliders, day/night shading and a soft cone of sunlight entering from offscreen. Drag or use arrow keys to rotate, including to the poles; click a point (or press Enter at the center) to select it. Selections snap to the nearest indexed town or city only within 100 km and use that place's coordinates, elevation and time zone. Otherwise the exact pin is kept at an assumed elevation of 0 m, even on mountains or ice. Remote pins use Open-Meteo's time zone when available; failed lookups fall back to UTC, explicitly labelled in the controls and charts. Missing clock times are skipped and repeated times use their first occurrence. Coordinate searches still retain the requested coordinates and retrieved elevation.
+
+The locally bundled GeoNames cities5000 index loads only on the first globe selection and is reused. It covers towns/cities over 5,000 people and selected administrative seats, rather than every village or landmark. Nearby selections show country, elevation and distance from the click; remote selections show coordinates and the assumed altitude. The selected location is shared across the annual, live and globe views. Globe results show theoretical UV and sun angle at the chosen time and date, the chosen date's peak UV, and low-UV windows. The annual tooltip shows only the maximum daylight sun angle; polar night is labelled as no daylight. Angles are measured above a flat horizon: 0° at the horizon and 90° overhead. Atmospheric refraction and terrain slope are not modelled. The coastline outline is public-domain Natural Earth data; retrieved elevation comes from Copernicus / Open-Meteo. Place-data attribution, license and regeneration instructions are in `public/data/README.md`. The globe and annual chart share the same solar and altitude model, including polar and midnight-wrapping cases.
 
 Dose is calculated as UV Index × minutes × 0.015 standard erythemal doses (SED), using 1 SED = 100 erythemally weighted J/m². The 1 SED daily reference is attributed to ARPANSA and is not scaled by phototype. It is not a per-outing allowance or a no-damage boundary. The calculator does not track a user's accumulated daily dose. Surface reflectance ranges are not personal exposure multipliers or statistical confidence intervals.
 
 The prototype uses UV forecast data from CAMS Global through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api), plus Open-Meteo geocoding. Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
 
 ```text
-UVI ≈ 12.5 × max(0, cos(solar zenith angle))^2.42 × (ozone / 300 DU)^-1.23
+UVI ≈ 12.5 × max(0, sin(sun angle above horizon))^2.42 × (ozone / 300 DU)^-1.23
 Theoretical altitude adjustment = 1 + 0.10 × elevation in km
 ```
 
@@ -79,7 +81,7 @@ Evidence reviewed 9 September 2026. Source links and specific findings are also 
 node --experimental-strip-types --test tests/*.test.mjs
 ```
 
-Checks cover equinox geometry, altitude effects, DST, leap years, polar and midnight-wrapping windows, globe projection, nearest-place lookup across the date line/poles, real gazetteer entries, coordinate metadata, cancellation and dose conversion.
+Checks cover equinox geometry, sun angles, altitude effects, DST, leap years, polar and midnight-wrapping windows, globe projection at both poles, the inclusive 100 km place threshold, remote pins at 0 m, UTC fallback, date-line lookup, real gazetteer entries, coordinate metadata, cancellation and dose conversion.
 
 ## Status
 

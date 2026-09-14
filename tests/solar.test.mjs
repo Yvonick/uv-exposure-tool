@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dailyModel, buildAnnualData, uvAtInstant, subsolarPoint, formatLowWindow, allDayLowSeason } from '../lib/solar.ts';
 import { project, unproject, nightPath, visibleLine } from '../lib/globe.ts';
-import { parseCoordinates, resolveCoordinates, lookupLocations, nearestPlace, resolveNearestPlace } from '../lib/locations.ts';
+import { parseCoordinates, resolveCoordinates, lookupLocations, nearestPlace, resolveGlobeLocation } from '../lib/locations.ts';
 import { standardErythemalDose } from '../lib/uv-dose.ts';
 import { daylightChartRange, daylightChartTicks } from '../lib/daylight-chart.ts';
 
@@ -79,7 +79,12 @@ test('instant UV follows sunlight, including the nighttime hemisphere', () => {
 });
 
 test('globe click inverse round-trips across view centers and clips outside disk', () => {
-  for (const center of [{ latitude: 0, longitude: 0 }, { latitude: 65, longitude: 160 }, { latitude: -65, longitude: -170 }]) {
+  for (const latitude of [-90, 90]) {
+    const pole = unproject(1e-15, -1e-15, { latitude, longitude: 37 });
+    close(pole.latitude, latitude);
+    close(pole.longitude, 37);
+  }
+  for (const center of [{ latitude: 0, longitude: 0 }, { latitude: 65, longitude: 160 }, { latitude: -65, longitude: -170 }, { latitude: 90, longitude: 15 }, { latitude: -90, longitude: -170 }]) {
     for (let latitude = -85; latitude <= 85; latitude += 10) for (let longitude = -175; longitude <= 175; longitude += 10) {
       const p = project({ latitude, longitude }, center);
       if (p.z < .01) continue;
@@ -165,9 +170,9 @@ test('globe lookup estimates at named coordinates and rejects cancelled results'
       return new Response(JSON.stringify({ elevation: 456, timezone: 'Europe/Paris' }));
     };
     controller = new AbortController();
-    await assert.rejects(resolveNearestPlace(46, 3, controller.signal), { name: 'AbortError' });
+    await assert.rejects(resolveGlobeLocation(46, 3, controller.signal), { name: 'AbortError' });
     controller = undefined;
-    const result = await resolveNearestPlace(46, 3);
+    const result = await resolveGlobeLocation(46, 3);
     assert.equal(result.name, 'Named town');
     assert.equal(result.country, 'France');
     assert.equal(result.latitude, 46.321);

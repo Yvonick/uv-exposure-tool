@@ -14,7 +14,9 @@ export function unproject(x: number, y: number, center: GeoPoint): GeoPoint | nu
   if (x * x + y * y > 1) return null;
   const z = Math.sqrt(Math.max(0, 1 - x * x - y * y)), phi0 = center.latitude * rad;
   const latitude = Math.asin(Math.max(-1, Math.min(1, y * Math.cos(phi0) + z * Math.sin(phi0)))) / rad;
-  const lon = center.longitude + Math.atan2(x, z * Math.cos(phi0) - y * Math.sin(phi0)) / rad;
+  // Longitude is undefined at a pole; retain the view's meridian instead of amplifying tiny pointer errors.
+  const lon = Math.abs(latitude) > 90 - 1e-7 ? center.longitude
+    : center.longitude + Math.atan2(x, z * Math.cos(phi0) - y * Math.sin(phi0)) / rad;
   return { latitude, longitude: ((lon + 180) % 360 + 360) % 360 - 180 };
 }
 

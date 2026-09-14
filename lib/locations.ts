@@ -1,6 +1,8 @@
 export type Location = {
   name: string; country: string; admin1?: string; latitude: number; longitude: number; timezone: string; elevation: number;
   selectionDistanceKm?: number;
+  selectionMode?: 'nearest-place' | 'pin';
+  timezoneFallback?: boolean;
 };
 export const DEFAULT_LOCATION: Location = {
   name: 'Berlin', country: 'Germany', admin1: 'Berlin', latitude: 52.5244, longitude: 13.4105, timezone: 'Europe/Berlin', elevation: 74,
@@ -23,6 +25,7 @@ function validMetadata(timezone: unknown, elevation: unknown): boolean {
 }
 
 const coordinateCache = new Map<string, Location>();
+const coordinateName = (latitude: number, longitude: number) => `${Math.abs(latitude).toFixed(2)}°${latitude >= 0 ? 'N' : 'S'}, ${Math.abs(longitude).toFixed(2)}°${longitude >= 0 ? 'E' : 'W'}`;
 export async function resolveCoordinates(latitude: number, longitude: number, signal?: AbortSignal): Promise<Location> {
   signal?.throwIfAborted();
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) throw new Error('Invalid coordinates.');
@@ -34,7 +37,7 @@ export async function resolveCoordinates(latitude: number, longitude: number, si
   if (!response.ok) throw new Error('Could not resolve elevation and local time. Please try again.');
   const data = await response.json() as { elevation?: number; timezone?: string };
   if (!validMetadata(data.timezone, data.elevation)) throw new Error('Could not resolve elevation and local time. Please try again.');
-  const location = { name: `${Math.abs(latitude).toFixed(2)}°${latitude >= 0 ? 'N' : 'S'}, ${Math.abs(longitude).toFixed(2)}°${longitude >= 0 ? 'E' : 'W'}`, country: '', latitude, longitude, timezone: data.timezone!, elevation: data.elevation! };
+  const location = { name: coordinateName(latitude, longitude), country: '', latitude, longitude, timezone: data.timezone!, elevation: data.elevation! };
   coordinateCache.set(key, location);
   return location;
 }
@@ -75,7 +78,25 @@ export function nearestPlace(places: NamedPlace[], latitude: number, longitude: 
   return { place: nearest, distanceKm: 6371.0088 * 2 * Math.asin(Math.sqrt(Math.min(1, Math.max(0, minimum)))) };
 }
 
-export async function resolveNearestPlace(latitude: number, longitude: number, signal?: AbortSignal, language = 'en'): Promise<Location> {
+async function resolveGlobePin(latitude: number, longitude: number, signal?: AbortSignal): Promise<Location> {
+  const pin: Location = { name: coordinateName(latitude, longitude), country: '', latitude, longitude,
+    elevation: 0, timezone: 'UTC', timezoneFallback: true, selectionMode: 'pin' };
+  const params = new URLSearchParams({ latitude: String(latitude), longitude: String(longitude),
+    elevation: '0', timezone: 'auto', current: 'is_day', forecast_days: '1', cell_selection: 'nearest' });
+  try {
+    // A missing time zone or unavailable weather service must not prevent a remote selection.
+    const timeout = AbortSignal.timeout(5000);
+    const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params}`, { signal: signal ? AbortSignal.any([signal, timeout]) : timeout });
+    if (response.ok) {
+      const data = await response.json() as { timezone?: string };
+      if (validMetadata(data.timezone, 0)) { pin.timezone = data.timezone!; pin.timezoneFallback = false; }
+    }
+  } catch { signal?.throwIfAborted(); }
+  signal?.throwIfAborted();
+  return pin;
+}
+
+export async function resolveGlobeLocation(latitude: number, longitude: number, signal?: AbortSignal, language = 'en'): Promise<Location> {
   signal?.throwIfAborted();
   if (!placeIndex) {
     const response = await fetch('/data/places.json', { signal });
@@ -89,8 +110,9 @@ export async function resolveNearestPlace(latitude: number, longitude: number, s
     placeIndex = data;
   }
   const { place, distanceKm } = nearestPlace(placeIndex, latitude, longitude);
-  // Resolve metadata at the named place, never relabel the original clicked point.
+  if (distanceKm > 100) return resolveGlobePin(latitude, longitude, signal);
+  // Only nearby selections snap to the named place and use its actual metadata.
   const metadata = await resolveCoordinates(place[2], place[3], signal);
   signal?.throwIfAborted();
-  return { ...metadata, name: place[0], country: new Intl.DisplayNames([language], { type: 'region' }).of(place[1]) ?? place[1], selectionDistanceKm: distanceKm };
+  return { ...metadata, name: place[0], country: new Intl.DisplayNames([language], { type: 'region' }).of(place[1]) ?? place[1], selectionDistanceKm: distanceKm, selectionMode: 'nearest-place' };
 }

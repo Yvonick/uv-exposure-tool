@@ -1,5 +1,12 @@
 import type { Language } from './languages';
 
+// Shared by the page's method section and the globe's source panel.
+export const modelNotes = {
+  solarAngles: 'Sun angles are measured above a flat horizon: 0° at the horizon, 90° overhead. The annual tooltip shows only the day’s maximum daylight angle, using a fixed solar declination for that day; polar night is shown as no daylight. The globe uses the chosen time and date. Terrain slope and atmospheric refraction are not included.',
+  globeSelection: 'Globe selections use the nearest indexed town or city within 100 km, with that place’s coordinates and elevation. Otherwise the exact pin is kept with an assumed elevation of 0 m, even on mountains or ice. This selected location is used by the annual, live and globe views. Coordinate searches retain their requested coordinates and retrieved elevation.',
+  clock: 'The controls and charts use the selected location’s time zone, including daylight saving. If a remote pin’s time zone cannot be resolved, they use UTC, labelled on the page. Missing clock times are skipped; repeated times use their first occurrence. Dates use the {year} calendar.',
+};
+
 // Each row contains the English source text, French, and German.
 // Scientific values and qualifications are kept identical across versions.
 export const messages: Array<[string, string, string]> = [
@@ -106,28 +113,34 @@ export const messages: Array<[string, string, string]> = [
   ['Sunlight from the viewer’s direction', 'Lumière venant de votre direction', 'Sonnenlicht aus Blickrichtung'],
   ['Sunlight from behind the globe', 'Lumière venant de derrière le globe', 'Sonnenlicht von hinter dem Globus'],
   ['Coastlines could not load. Place selection still works.', 'Les côtes n’ont pas pu être chargées. La sélection d’un lieu reste possible.', 'Küstenlinien konnten nicht geladen werden. Die Ortsauswahl funktioniert weiterhin.'],
-  ['Finding the nearest town and its elevation…', 'Recherche de la ville la plus proche et de son altitude…', 'Nächstgelegenen Ort und seine Höhe suchen…'],
+  ['Resolving the selected location…', 'Recherche du lieu sélectionné…', 'Gewählten Ort ermitteln…'],
   ['Theoretical UV at the chosen time', 'UV théoriques à l’heure choisie', 'Theoretischer UV-Wert zur gewählten Uhrzeit'],
   ['Sun angle', 'Hauteur du soleil', 'Sonnenhöhe'],
   ['NOAA · solar angles', 'NOAA · angles solaires', 'NOAA · Sonnenwinkel'],
-  ['Daylight sun angle', 'Hauteur du soleil de jour', 'Sonnenhöhe bei Tageslicht'],
-  ['min {min}° · max {max}°', 'min. {min}° · max. {max}°', 'Min. {min}° · Max. {max}°'],
+  ['Maximum sun angle', 'Hauteur maximale du soleil', 'Maximale Sonnenhöhe'],
   ['0° at the horizon · 90° overhead', '0° à l’horizon · 90° au zénith', '0° am Horizont · 90° im Zenit'],
   ['Sun below the horizon', 'Soleil sous l’horizon', 'Sonne unter dem Horizont'],
   ['No daylight', 'Pas de lumière du jour', 'Kein Tageslicht'],
-  ['Solar elevation is the angle above a flat horizon: 0° at the horizon, 90° overhead. The annual minimum and maximum cover daylight only, using the day’s fixed solar declination. Terrain slope and atmospheric refraction are not included.', 'La hauteur du soleil est l’angle au-dessus d’un horizon plat : 0° à l’horizon, 90° au zénith. Les minima et maxima du graphique annuel concernent uniquement la période diurne, avec une déclinaison solaire fixe pour chaque jour. La pente du terrain et la réfraction atmosphérique ne sont pas prises en compte.', 'Die Sonnenhöhe ist der Winkel über einem flachen Horizont: 0° am Horizont, 90° im Zenit. Minimum und Maximum im Jahresdiagramm beziehen sich nur auf das Tageslicht, mit einer festen Sonnendeklination je Tag. Geländeneigung und atmosphärische Brechung werden nicht berücksichtigt.'],
-  ['Selected local day', 'Jour local choisi', 'Gewählter lokaler Tag'],
+  [modelNotes.solarAngles, 'La hauteur du soleil est mesurée au-dessus d’un horizon plat : 0° à l’horizon, 90° au zénith. L’infobulle annuelle affiche uniquement la hauteur maximale du soleil pendant la journée, avec une déclinaison solaire fixe pour chaque jour ; la nuit polaire est signalée par l’absence de lumière du jour. Le globe utilise l’heure et la date choisies. La pente du terrain et la réfraction atmosphérique ne sont pas prises en compte.', 'Sonnenwinkel werden über einem flachen Horizont gemessen: 0° am Horizont, 90° im Zenit. Der Tooltip im Jahresdiagramm zeigt nur die maximale Sonnenhöhe bei Tageslicht, mit einer festen Sonnendeklination je Tag; bei Polarnacht wird kein Tageslicht angezeigt. Der Globus verwendet die gewählte Uhrzeit und das gewählte Datum. Geländeneigung und atmosphärische Brechung werden nicht berücksichtigt.'],
+  [modelNotes.globeSelection, 'La sélection sur le globe utilise la ville ou commune répertoriée la plus proche dans un rayon de 100 km, avec ses coordonnées et son altitude. Au-delà, le point exact est conservé avec une altitude supposée de 0 m, même en montagne ou sur la glace. Ce lieu est utilisé par les vues annuelle, actuelle et du globe. Les recherches par coordonnées conservent les coordonnées demandées et l’altitude récupérée.', 'Bei der Auswahl auf dem Globus wird der nächste erfasste Ort innerhalb von 100 km mit seinen Koordinaten und seiner Höhe verwendet. Andernfalls bleibt der genaue Punkt erhalten, mit einer angenommenen Höhe von 0 m, auch im Gebirge oder auf Eis. Dieser Ort gilt für Jahresdiagramm, aktuelle UV-Werte und Globus. Koordinatensuchen behalten die eingegebenen Koordinaten und die abgerufene Höhe bei.'],
+  ['Chosen date', 'Date choisie', 'Gewähltes Datum'],
   ['Low-UV window on the chosen date', 'Créneau de faible UV à la date choisie', 'Zeitfenster mit geringem UV am gewählten Datum'],
   ['{height} m elevation', '{height} m d’altitude', '{height} m Höhe'],
+  ['0 m assumed elevation', 'Altitude supposée : 0 m', 'Angenommene Höhe: 0 m'],
+  ['Exact pin · no mapped place within 100 km', 'Point exact · aucun lieu répertorié dans un rayon de 100 km', 'Genauer Punkt · kein erfasster Ort im Umkreis von 100 km'],
+  ['Time zone unavailable · using UTC', 'Fuseau horaire indisponible · heure UTC utilisée', 'Zeitzone nicht verfügbar · UTC wird verwendet'],
+  ['UTC', 'UTC', 'UTC'],
+  ['Time (UTC)', 'Heure (UTC)', 'Uhrzeit (UTC)'],
+  ['UVI below 3 · UTC', 'Indice UV inférieur à 3 · UTC', 'UV-Index unter 3 · UTC'],
   ['Nearest mapped place · {distance} km from your selection', 'Lieu répertorié le plus proche · à {distance} km du point choisi', 'Nächster erfasster Ort · {distance} km vom gewählten Punkt'],
   ['less than 1', 'moins de 1', 'weniger als 1'],
   ['Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.', 'Des rayons directs produisent des UV plus forts que des rayons rasants. Le modèle tient compte de l’altitude (environ +10 % d’UV par km), d’un ciel dégagé et d’un taux d’ozone fixe. Des UV faibles ne signifient pas un risque nul.', 'Direkt einfallende Strahlen erzeugen stärkere UV-Werte als flach einfallende. Das Modell berücksichtigt die Höhe (etwa +10 % UV pro km), klaren Himmel und einen festen Ozongehalt. Geringe UV-Werte bedeuten kein Nullrisiko.'],
-  ['Globe selections use the nearest place in', 'La sélection sur le globe utilise le lieu le plus proche dans', 'Bei der Auswahl auf dem Globus wird der nächste Ort im'],
-  ['’ town and city index. Results apply to that place; small villages and landmarks may be absent.', ', le répertoire des villes et communes. Les résultats s’appliquent à ce lieu ; les petits villages et points d’intérêt peuvent être absents.', '-Ortsverzeichnis verwendet. Die Ergebnisse gelten für diesen Ort; kleine Dörfer und Sehenswürdigkeiten können fehlen.'],
+  ['Place names:', 'Noms des lieux :', 'Ortsnamen:'],
+  ['’ town and city index; small villages and landmarks may be absent.', ', le répertoire des villes et communes ; les petits villages et points d’intérêt peuvent être absents.', '-Ortsverzeichnis; kleine Dörfer und Sehenswürdigkeiten können fehlen.'],
   ['Solar geometry:', 'Géométrie solaire :', 'Sonnengeometrie:'], ['. UV:', '. UV :', '. UV:'], ['. Altitude:', '. Altitude :', '. Höhe:'], ['and', 'et', 'und'],
   ['give approximate rules; actual mountain conditions vary. Elevation:', 'donnent des règles approximatives ; les conditions en montagne varient. Altitude du terrain :', 'geben Näherungsregeln an; die tatsächlichen Bedingungen im Gebirge variieren. Geländehöhe:'],
   ['. Coastlines:', '. Côtes :', '. Küstenlinien:'], ['Natural Earth, public domain', 'Natural Earth, domaine public', 'Natural Earth, gemeinfrei'],
-  ['The date and time controls use the selected place’s local time, including daylight saving. Missing clock times are skipped; repeated times use their first occurrence. Dates use the {year} calendar.', 'Les curseurs utilisent la date et l’heure locales du lieu choisi, en tenant compte de l’heure d’été. Les heures inexistantes sont sautées ; les heures répétées utilisent leur première occurrence. Les dates suivent le calendrier {year}.', 'Die Regler verwenden Datum und Ortszeit des gewählten Ortes einschließlich Sommerzeit. Übersprungene Uhrzeiten werden ausgelassen; bei doppelt vorkommenden Uhrzeiten gilt das erste Vorkommen. Die Datumsangaben beziehen sich auf das Jahr {year}.'],
+  [modelNotes.clock, 'Les curseurs et graphiques utilisent le fuseau horaire du lieu sélectionné, en tenant compte de l’heure d’été. Si le fuseau d’un point isolé ne peut pas être déterminé, l’heure UTC est utilisée et indiquée sur la page. Les heures inexistantes sont sautées ; les heures répétées utilisent leur première occurrence. Les dates suivent le calendrier {year}.', 'Die Regler und Diagramme verwenden die Zeitzone des gewählten Ortes einschließlich Sommerzeit. Kann die Zeitzone eines abgelegenen Punktes nicht ermittelt werden, wird UTC verwendet und auf der Seite angegeben. Übersprungene Uhrzeiten werden ausgelassen; bei doppelt vorkommenden Uhrzeiten gilt das erste Vorkommen. Die Datumsangaben beziehen sich auf das Jahr {year}.'],
   ['Live UV is temporarily unavailable. The theoretical annual view still works.', 'Les UV actuels sont temporairement indisponibles. La vue annuelle théorique reste disponible.', 'Aktuelle UV-Werte sind vorübergehend nicht verfügbar. Die theoretische Jahresansicht funktioniert weiterhin.'],
   ['Use latitude −90 to 90, then longitude −180 to 180.', 'Saisir une latitude entre −90 et 90, puis une longitude entre −180 et 180.', 'Breitengrad von −90 bis 90, danach Längengrad von −180 bis 180 eingeben.'],
   ['Invalid coordinates.', 'Coordonnées invalides.', 'Ungültige Koordinaten.'],

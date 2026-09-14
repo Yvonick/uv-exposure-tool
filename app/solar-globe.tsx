@@ -6,6 +6,7 @@ import { type Location } from '@/lib/locations';
 import { dailyModel, daysInYear, formatHour, solarElevationAtInstant, localCalendarTime, localDateTimeToInstant, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
 import { project, unproject, visibleLine, nightPath, type GeoPoint } from '@/lib/globe';
 import { useLanguage } from './language';
+import { modelNotes } from '@/lib/translations';
 
 type Land = { features: Array<{ geometry: { type: string; coordinates: number[][][] | number[][][][] } }> };
 const CENTER = 300, RADIUS = 180;
@@ -27,7 +28,7 @@ export default function SolarGlobe({ location, year, onPick }: {
   const pickSequence = useRef(0);
   const drag = useRef<{ x: number; y: number; view: GeoPoint; moved: boolean } | null>(null);
 
-  useEffect(() => { setView({ latitude: Math.max(-70, Math.min(70, location.latitude)), longitude: location.longitude }); }, [location.latitude, location.longitude]);
+  useEffect(() => { setView({ latitude: Math.max(-90, Math.min(90, location.latitude)), longitude: location.longitude }); }, [location.latitude, location.longitude]);
   useEffect(() => {
     const controller = new AbortController();
     fetch('/data/land.geojson', { signal: controller.signal }).then((response) => {
@@ -92,14 +93,14 @@ export default function SolarGlobe({ location, year, onPick }: {
     if (!drag.current) return;
     const dx = event.clientX - drag.current.x, dy = event.clientY - drag.current.y;
     if (Math.hypot(dx, dy) > 5) drag.current.moved = true;
-    if (drag.current.moved) setView({ longitude: wrapLongitude(drag.current.view.longitude - dx * .45), latitude: Math.max(-85, Math.min(85, drag.current.view.latitude + dy * .35)) });
+    if (drag.current.moved) setView({ longitude: wrapLongitude(drag.current.view.longitude - dx * .45), latitude: Math.max(-90, Math.min(90, drag.current.view.latitude + dy * .35)) });
   }
   function keyboard(event: KeyboardEvent<SVGSVGElement>) {
     const key = event.key;
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(key)) return;
     event.preventDefault();
     if (key === 'Enter' || key === ' ') { void selectPoint(view); return; }
-    setView((current) => ({ longitude: wrapLongitude(current.longitude + (key === 'ArrowLeft' ? -15 : key === 'ArrowRight' ? 15 : 0)), latitude: Math.max(-85, Math.min(85, current.latitude + (key === 'ArrowUp' ? 10 : key === 'ArrowDown' ? -10 : 0))) }));
+    setView((current) => ({ longitude: wrapLongitude(current.longitude + (key === 'ArrowLeft' ? -15 : key === 'ArrowRight' ? 15 : 0)), latitude: Math.max(-90, Math.min(90, current.latitude + (key === 'ArrowUp' ? 10 : key === 'ArrowDown' ? -10 : 0))) }));
   }
 
   return (
@@ -108,7 +109,7 @@ export default function SolarGlobe({ location, year, onPick }: {
       <div className="fact-content">
         <div className="globe-controls">
           <div><div className="slider-heading"><label id="globe-date-label">{t("Date")}</label><output>{dateLabel}</output></div><Slider aria-labelledby="globe-date-label" aria-valuetext={dateLabel} value={[selectedDay]} onValueChange={(value) => updateSelection(Array.isArray(value) ? value[0] : value, localMinutes)} min={0} max={daysInYear(year) - 1} step={1} /><div className="slider-endpoints"><span>{t("Jan 1")}</span><span>{t("Dec 31")}</span></div></div>
-          <div><div className="slider-heading"><label id="globe-time-label">{t("Local time")}</label><output>{formatHour(localMinutes / 60)}</output></div><Slider aria-labelledby="globe-time-label" aria-valuetext={formatHour(localMinutes / 60)} value={[localMinutes]} onValueChange={(value) => updateSelection(selectedDay, Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
+          <div><div className="slider-heading"><label id="globe-time-label">{t(location.timezoneFallback ? "Time (UTC)" : "Local time")}</label><output>{formatHour(localMinutes / 60)}</output></div><Slider aria-labelledby="globe-time-label" aria-valuetext={formatHour(localMinutes / 60)} value={[localMinutes]} onValueChange={(value) => updateSelection(selectedDay, Array.isArray(value) ? value[0] : value)} min={0} max={1435} step={5} /><div className="slider-endpoints"><span>00:00</span><span>23:55</span></div></div>
         </div>
         <div className="globe-layout">
           <div className="globe-stage">
@@ -131,23 +132,26 @@ export default function SolarGlobe({ location, year, onPick }: {
           <div className="globe-results" aria-live="polite" aria-busy={picking}>
             <div className="globe-location">
               <p className="globe-place">{location.name}</p>
-              <p className="globe-place-meta">{[location.country, t('{height} m elevation', { height: number(location.elevation) })].filter(Boolean).join(' · ')}</p>
-              <p className="globe-local">{localLabel} · {t('local time')}</p>
+              <p className="globe-place-meta">{[location.country, location.selectionMode === 'pin' ? t('0 m assumed elevation') : t('{height} m elevation', { height: number(location.elevation) })].filter(Boolean).join(' · ')}</p>
+              <p className="globe-local">{localLabel} · {t(location.timezoneFallback ? 'UTC' : 'local time')}</p>
               {location.selectionDistanceKm !== undefined && <p className="globe-selection-note">{t('Nearest mapped place · {distance} km from your selection', { distance: location.selectionDistanceKm < 1 ? t('less than 1') : number(location.selectionDistanceKm) })}</p>}
+              {location.selectionMode === 'pin' && <p className="globe-selection-note">{t('Exact pin · no mapped place within 100 km')}</p>}
+              {location.timezoneFallback && <p className="globe-selection-note">{t('Time zone unavailable · using UTC')}</p>}
             </div>
-            {picking && <p className="fact-note globe-status">{t("Finding the nearest town and its elevation…")}</p>}
+            {picking && <p className="fact-note globe-status">{t("Resolving the selected location…")}</p>}
             {pickError && <p className="globe-error" role="alert">{t(pickError)}</p>}
             <div className="peak-stat"><span>{t("Theoretical UV at the chosen time")}</span><strong>{number(currentUv, 1)}</strong></div>
             <div className={`peak-stat solar-angle-stat${solarElevation === null ? ' nighttime-stat' : ''}`}><span>{t("Sun angle")}</span><strong>{solarElevation === null ? t('Sun below the horizon') : `${number(solarElevation, 1)}°`}</strong><small>{t("0° at the horizon · 90° overhead")}</small></div>
-            <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(result.maxUv, 1)}</strong><small>{t("Selected local day")}</small></div>
-            <div className="peak-stat window-stat"><span>{t("Low-UV window on the chosen date")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t("UVI below 3 · local time")}</small></div>
+            <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(result.maxUv, 1)}</strong><small>{t("Chosen date")}</small></div>
+            <div className="peak-stat window-stat"><span>{t("Low-UV window on the chosen date")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t(location.timezoneFallback ? 'UVI below 3 · UTC' : 'UVI below 3 · local time')}</small></div>
           </div>
         </div>
         <details className="evidence"><summary>{t("Sources and model")}</summary><div className="evidence-content">
-        <p className="fact-note">{t("Solar elevation is the angle above a flat horizon: 0° at the horizon, 90° overhead. The annual minimum and maximum cover daylight only, using the day’s fixed solar declination. Terrain slope and atmospheric refraction are not included.")} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a></p>
+        <p className="fact-note">{t(modelNotes.solarAngles)} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a></p>
         <p className="fact-note">{t("Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.")}</p>
-        <p className="fact-note globe-index-note">{t("Globe selections use the nearest place in")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">{t("GeoNames")}</a>{t("’ town and city index. Results apply to that place; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a>.</p>
-        <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t('The date and time controls use the selected place’s local time, including daylight saving. Missing clock times are skipped; repeated times use their first occurrence. Dates use the {year} calendar.', { year })}</p></div></details>
+        <p className="fact-note">{t(modelNotes.globeSelection)}</p>
+        <p className="fact-note globe-index-note">{t("Place names:")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">{t("GeoNames")}</a>{t("’ town and city index; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a>.</p>
+        <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t(modelNotes.clock, { year })}</p></div></details>
       </div>
     </section>
   );

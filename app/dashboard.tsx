@@ -27,12 +27,13 @@ import { Button } from '@/components/ui/button';
 import { ChartContainer, type ChartConfig } from '@/components/ui/chart';
 import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
+import { modelNotes } from '@/lib/translations';
 import { ChartHoverSurface, FloatingChartTooltip } from './chart-hover';
 import { LanguageSwitcher, useLanguage } from './language';
 import { defaultLocations } from '@/lib/languages';
 import { daylightChartRange, daylightChartTicks } from '@/lib/daylight-chart';
 import { buildAnnualData, formatHour, allDayLowSeason, type AnnualPoint } from '@/lib/solar';
-import { formatLocationLabel, lookupLocations, lookupLocation, resolveNearestPlace, type Location } from '@/lib/locations';
+import { formatLocationLabel, lookupLocations, lookupLocation, resolveGlobeLocation, type Location } from '@/lib/locations';
 import {
   Combobox,
   ComboboxContent,
@@ -246,7 +247,7 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
         {lowWindow(point.lowWindows)} · {t('UVI below 3')}
       </p>
       <p className="chart-tooltip-note">{t('Theoretical UV peak')} · {number(point.maxUv, 1)} {t("UVI")}</p>
-      <p className="chart-tooltip-note">{t('Daylight sun angle')} · {point.daylightSolarElevation ? t('min {min}° · max {max}°', { min: number(point.daylightSolarElevation.min, 1), max: number(point.daylightSolarElevation.max, 1) }) : t('No daylight')}</p>
+      <p className="chart-tooltip-note">{t('Maximum sun angle')} · {point.daylightSolarElevation ? `${number(point.daylightSolarElevation.max, 1)}°` : t('No daylight')}</p>
       <p className="chart-tooltip-note">{t('0° at the horizon · 90° overhead')}</p>
     </FloatingChartTooltip>
   );
@@ -603,8 +604,8 @@ export default function Dashboard() {
           <p className="coordinate-hint">{t("Or enter latitude, longitude · e.g. 52.52, 13.41")}</p>
           <div className="location-meta">
             <p className="location-result">
-              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {Math.round(location.elevation)} {t("m")} </p>
-            <p className="location-clock"><span>{t("Local time")}</span><time>{localTime}</time></p>
+              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${Math.round(location.elevation)} ${t('m')}`} </p>
+            <p className="location-clock"><span>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</span><time>{localTime}</time></p>
           </div>
         </form>
           </div>
@@ -747,18 +748,21 @@ export default function Dashboard() {
             </ChartHoverSurface>
           </div>
           <div className="chart-caption">
-            <p>{t('Theoretical daily windows · clear sky')} · {number(location.elevation)} {t("m.")} <a href="#method">{t("Method")}</a></p>
-            <p>{t("Local time")}</p>
+            <p>{t('Theoretical daily windows · clear sky')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} <a href="#method">{t("Method")}</a></p>
+            <p>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</p>
           </div>
         </div>
       </section>
 
       <UvFacts />
-      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveNearestPlace(latitude, longitude, signal, language))} />
+      <SolarGlobe location={location} year={year} onPick={(latitude, longitude) => resolveAndChoose((signal) => resolveGlobeLocation(latitude, longitude, signal, language))} />
 
       <section className="method-section" id="method">
         <div className="method-copy">
           <h2>{t("Method and sources")}</h2>
+          <p>{t(modelNotes.solarAngles)}</p>
+          <p>{t(modelNotes.globeSelection)}</p>
+          <p>{t(modelNotes.clock, { year })}</p>
           <p> {t("The annual band uses solar position and the Madronich clear-sky formula with a fixed 300 DU ozone column, clean air, low ground reflection and the location’s elevation (approximately +10% UV per kilometre). Low-UV windows mean UVI below 3, not zero risk. It is a theoretical seasonal guide, not a forecast. The compact daily chart uses CAMS Global estimates via Open-Meteo. It focuses on daylight, retaining one complete nighttime hour before sunrise and after sunset; polar conditions or unavailable sunrise/sunset times retain the full day. Its line connects estimated hourly means; the dashed part shows the current and upcoming hours. Dots show the highest available sample in each hour, not a measured hourly maximum. Earlier values are model estimates, not measurements.")} </p>
         </div>
         <div className="sources">
