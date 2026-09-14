@@ -26,6 +26,7 @@ import UvFacts from './uv-facts';
 import SolarGlobe from './solar-globe';
 import AnnualHeatmap from './annual-heatmap';
 import { modelNotes } from '@/lib/translations';
+import { locationPreferenceCookie, type LocationPreference } from '@/lib/location-preference';
 import { ChartHoverSurface, FloatingChartTooltip } from './chart-hover';
 import { LanguageSwitcher, useLanguage } from './language';
 import { defaultLocations } from '@/lib/languages';
@@ -243,11 +244,12 @@ function DailyTooltip({ active, payload }: { active?: boolean; payload?: Array<{
   );
 }
 
-export default function Dashboard() {
+export default function Dashboard({ initialPreference }: { initialPreference?: LocationPreference }) {
   const { language, locale, t, number } = useLanguage();
   const todayChartConfig = Object.fromEntries(Object.entries(todayChartStyle).map(([key, item]) => [key, { ...item, label: t(item.label) }]));
-  const [location, setLocation] = useState<Location>(defaultLocations[language]);
-  const [query, setQuery] = useState('');
+  const [location, setLocation] = useState<Location>(initialPreference?.location ?? defaultLocations[language]);
+  const [query, setQuery] = useState(initialPreference?.query ?? '');
+  const [usingDefaultLocation, setUsingDefaultLocation] = useState(!initialPreference?.location);
   const [suggestions, setSuggestions] = useState<Location[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [localTime, setLocalTime] = useState('--:--:--');
@@ -269,6 +271,10 @@ export default function Dashboard() {
   const lowSeason = useMemo(() => allDayLowSeason(annualData), [annualData]);
 
   useEffect(() => () => locationController.current?.abort(), []);
+
+  useEffect(() => {
+    document.cookie = locationPreferenceCookie({ location: usingDefaultLocation ? null : location, query }, window.location.protocol === 'https:');
+  }, [location, query, usingDefaultLocation]);
 
   useEffect(() => {
     const updateClock = () => setLocalTime(formatLocalTime(location.timezone));
@@ -451,6 +457,7 @@ export default function Dashboard() {
     locationController.current?.abort();
     locationRequest.current++;
     setLocation(nextLocation);
+    setUsingDefaultLocation(false);
     setQuery(formatLocationLabel(nextLocation));
     setSuggestions([]);
     setLoadingSuggestions(false);
@@ -561,7 +568,7 @@ export default function Dashboard() {
           <p className="coordinate-hint">{t("Or enter latitude, longitude · e.g. 52.52, 13.41")}</p>
           <div className="location-meta">
             <p className="location-result">
-              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${Math.round(location.elevation)} ${t('m')}`} </p>
+              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {number(Math.abs(location.latitude), 1)}°{location.latitude < 0 ? 'S' : 'N'} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${Math.round(location.elevation)} ${t('m')}`} </p>
             <p className="location-clock"><span>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</span><time>{localTime}</time></p>
           </div>
         </form>
@@ -660,7 +667,7 @@ export default function Dashboard() {
 
       <footer>
         <a className="brand footer-brand" href="#top"><span>{t("UV EXPOSURE TOOL")}</span></a>
-        <p>{year}</p>
+        <p>Yves Chabot · {year}</p>
       </footer>
     </main>
   );

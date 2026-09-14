@@ -10,6 +10,7 @@ import { modelNotes } from '@/lib/translations';
 
 type Land = { features: Array<{ geometry: { type: string; coordinates: number[][][] | number[][][][] } }> };
 const CENTER = 300, RADIUS = 180;
+const principalLatitudes = [-66.56, -23.44, 0, 23.44, 66.56];
 
 export default function SolarGlobe({ location, year, onPick }: {
   location: Location; year: number; onPick: (latitude: number, longitude: number) => Promise<Location>;
@@ -70,10 +71,13 @@ export default function SolarGlobe({ location, year, onPick }: {
   const outline = useMemo(() => lines.map((line) => visibleLine(line, view)).join(''), [lines, view]);
   const grid = useMemo(() => {
     const paths: string[] = [];
-    for (const latitude of [-60, -30, 0, 30, 60]) paths.push(visibleLine(Array.from({ length: 181 }, (_, i) => ({ latitude, longitude: -180 + i * 2 })), view));
+    for (const latitude of [-60, -30, 30, 60]) paths.push(visibleLine(Array.from({ length: 181 }, (_, i) => ({ latitude, longitude: -180 + i * 2 })), view));
     for (let longitude = -180; longitude < 180; longitude += 30) paths.push(visibleLine(Array.from({ length: 91 }, (_, i) => ({ latitude: -90 + i * 2, longitude })), view));
     return paths.join('');
   }, [view]);
+  const principalParallels = useMemo(() => principalLatitudes.map(latitude =>
+    visibleLine(Array.from({ length: 181 }, (_, i) => ({ latitude, longitude: -180 + i * 2 })), view)
+  ).join(''), [view]);
 
   async function selectPoint(point: GeoPoint) {
     const sequence = ++pickSequence.current;
@@ -121,8 +125,8 @@ export default function SolarGlobe({ location, year, onPick }: {
               {sideSun && <path d="M1600,0L0,-185L0,185Z" transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="url(#sunlight-cone)" pointerEvents="none" aria-hidden="true" />}
               <circle cx={CENTER} cy={CENTER} r={RADIUS} fill="url(#ocean)" stroke="#6b9484" />
               <circle className="globe-focus" cx={CENTER} cy={CENTER} r={RADIUS + 9} aria-hidden="true" />
-              <g clipPath="url(#earth-disk)" aria-hidden="true"><path d={grid} fill="none" stroke="#729686" strokeWidth=".65" opacity=".5" /><path d={outline} fill="none" stroke="#3c705b" strokeWidth="1.2" strokeLinejoin="round" /><path d={nightPath(sun)} transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="#182d3c" opacity=".65" /></g>
-              {[60, 30, 0, -30, -60].map((latitude) => { const p = project({ latitude, longitude: view.longitude }, view); return p.z > .2 ? <text key={latitude} x={CENTER + 7} y={CENTER - RADIUS * p.y - 5} className="globe-latitude" aria-hidden="true">{latitude === 0 ? t('Equator') : `${Math.abs(latitude)}°${latitude > 0 ? 'N' : 'S'}`}</text> : null; })}
+              <g clipPath="url(#earth-disk)" aria-hidden="true"><path d={grid} fill="none" stroke="#729686" strokeWidth=".65" opacity=".5" /><path className="globe-principal-parallels" d={principalParallels} fill="none" stroke="#4d7d6b" strokeWidth="1.15" opacity=".75" /><path d={outline} fill="none" stroke="#3c705b" strokeWidth="1.2" strokeLinejoin="round" /><path d={nightPath(sun)} transform={`translate(${CENTER},${CENTER}) rotate(${sunAngle})`} fill="#182d3c" opacity=".65" /></g>
+              {principalLatitudes.map((latitude) => { const p = project({ latitude, longitude: view.longitude }, view); return p.z > .2 ? <text key={latitude} x={CENTER + 7} y={CENTER - RADIUS * p.y - 5} className="globe-latitude" aria-hidden="true">{latitude === 0 ? t('Equator') : `${number(Math.abs(latitude), 2)}°${latitude > 0 ? 'N' : 'S'}`}</text> : null; })}
               {marker.z >= 0 && <g aria-hidden="true"><circle cx={CENTER + RADIUS * marker.x} cy={CENTER - RADIUS * marker.y} r="6" fill={picking ? '#b48439' : '#ae553a'} stroke="#fff" strokeWidth="2" /></g>}
               <path d={`M${CENTER - 5},${CENTER}h10M${CENTER},${CENTER - 5}v10`} stroke="#3d5349" strokeWidth=".8" opacity=".6" aria-hidden="true" />
               {!sideSun && <text x="300" y="70" textAnchor="middle" className="globe-sun-caption">{t(sun.z > 0 ? 'Sunlight from the viewer’s direction' : 'Sunlight from behind the globe')}</text>}
@@ -132,7 +136,7 @@ export default function SolarGlobe({ location, year, onPick }: {
           <div className="globe-results" aria-live="polite" aria-busy={picking}>
             <div className="globe-location">
               <p className="globe-place">{location.name}</p>
-              <p className="globe-place-meta">{[location.country, location.selectionMode === 'pin' ? t('0 m assumed elevation') : t('{height} m elevation', { height: number(location.elevation) })].filter(Boolean).join(' · ')}</p>
+              <p className="globe-place-meta">{[location.country, `${number(Math.abs(location.latitude), 1)}°${location.latitude < 0 ? 'S' : 'N'}`, location.selectionMode === 'pin' ? t('0 m assumed elevation') : t('{height} m elevation', { height: number(location.elevation) })].filter(Boolean).join(' · ')}</p>
               <p className="globe-local">{localLabel} · {t(location.timezoneFallback ? 'UTC' : 'local time')}</p>
               {location.selectionDistanceKm !== undefined && <p className="globe-selection-note">{t('Nearest mapped place · {distance} km from your selection', { distance: location.selectionDistanceKm < 1 ? t('less than 1') : number(location.selectionDistanceKm) })}</p>}
               {location.selectionMode === 'pin' && <p className="globe-selection-note">{t('Exact pin · no mapped place within 100 km')}</p>}
