@@ -2,7 +2,7 @@ export type SolarLocation = { latitude: number; longitude: number; elevation: nu
 export type Interval = [number, number];
 export type DailyModel = {
   maxUv: number; solarNoon: number; protectionWindows: Interval[]; lowWindows: Interval[];
-  daylightIncidence: { min: number; max: number } | null;
+  daylightSolarElevation: { min: number; max: number } | null;
 };
 export type AnnualPoint = DailyModel & {
   day: number; date: string; base: number; protection: number; secondBase: number; secondProtection: number;
@@ -75,11 +75,11 @@ function solarCosine(location: Pick<SolarLocation, 'latitude' | 'longitude'>, da
   return Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos((location.longitude - sun.longitude) * radians);
 }
 
-// Incidence on horizontal ground = solar zenith: 0° overhead, 90° at the horizon.
-// A below-horizon sun has no direct sunlight incidence. Refraction is not included.
-export function incidenceAtInstant(location: Pick<SolarLocation, 'latitude' | 'longitude'>, date: Date) {
+// Solar elevation above a flat horizon: 0° at the horizon, 90° overhead.
+// Display no daylight angle when the sun is below the horizon. Refraction is not included.
+export function solarElevationAtInstant(location: Pick<SolarLocation, 'latitude' | 'longitude'>, date: Date) {
   const cosine = solarCosine(location, date);
-  return cosine < -1e-12 ? null : Math.acos(Math.max(0, Math.min(1, cosine))) / radians;
+  return cosine < -1e-12 ? null : Math.asin(Math.max(0, Math.min(1, cosine))) / radians;
 }
 
 export function uvAtInstant(location: SolarLocation, date: Date) {
@@ -95,13 +95,13 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
   const scale = 12.5 * altitudeFactor(location.elevation);
   const maxUv = scale * Math.max(0, a + b) ** 2.42;
   const minUv = scale * Math.max(0, a - b) ** 2.42;
-  const daylightIncidence = a + b <= 1e-12 ? null : {
-    min: Math.acos(Math.max(0, Math.min(1, a + b))) / radians,
-    max: Math.acos(Math.max(0, Math.min(1, a - b))) / radians,
+  const daylightSolarElevation = a + b <= 1e-12 ? null : {
+    min: Math.asin(Math.max(0, Math.min(1, a - b))) / radians,
+    max: Math.asin(Math.max(0, Math.min(1, a + b))) / radians,
   };
   const solarNoon = ((720 - 4 * location.longitude - equationOfTime + timezoneOffsetMinutes(date, location.timezone)) / 60 % 24 + 24) % 24;
-  if (maxUv < 3) return { maxUv, solarNoon, daylightIncidence, protectionWindows: [], lowWindows: [[0, 24]] };
-  if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, daylightIncidence, protectionWindows: [[0, 24]], lowWindows: [] };
+  if (maxUv < 3) return { maxUv, solarNoon, daylightSolarElevation, protectionWindows: [], lowWindows: [[0, 24]] };
+  if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, daylightSolarElevation, protectionWindows: [[0, 24]], lowWindows: [] };
   const cosine = Math.max(-1, Math.min(1, ((3 / scale) ** (1 / 2.42) - a) / b));
   const halfWidth = Math.acos(cosine) * 12 / Math.PI;
   const protectionWindows: Interval[] = [];
@@ -118,7 +118,7 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
     previous = end;
   }
   if (previous < 24) lowWindows.push([previous, 24]);
-  return { maxUv, solarNoon, daylightIncidence, protectionWindows, lowWindows };
+  return { maxUv, solarNoon, daylightSolarElevation, protectionWindows, lowWindows };
 }
 
 export function buildAnnualData(location: SolarLocation, year: number, locale = 'en'): AnnualPoint[] {

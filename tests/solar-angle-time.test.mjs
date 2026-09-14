@@ -1,39 +1,39 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { incidenceAtInstant, subsolarPoint, dailyModel, buildAnnualData, uvAtInstant, localCalendarTime, localDateTimeToInstant } from '../lib/solar.ts';
+import { solarElevationAtInstant, subsolarPoint, dailyModel, buildAnnualData, uvAtInstant, localCalendarTime, localDateTimeToInstant } from '../lib/solar.ts';
 
 const ground = { latitude: 0, longitude: 0, elevation: 0, timezone: 'UTC' };
 const day = (iso) => new Date(`${iso}T12:00:00Z`);
 const close = (actual, expected, tolerance = 1e-6) => assert.ok(Math.abs(actual - expected) <= tolerance, `${actual} != ${expected}`);
 
-test('incidence uses horizontal-ground zenith angle and distinguishes night', () => {
+test('sun angle is zero at the horizon and 90 overhead, and distinguishes night', () => {
   const instant = day('2026-03-20');
   const sun = subsolarPoint(instant);
-  close(incidenceAtInstant(sun, instant), 0);
-  close(incidenceAtInstant({ latitude: 0, longitude: sun.longitude + 90 }, instant), 90);
-  assert.equal(incidenceAtInstant({ latitude: -sun.latitude, longitude: sun.longitude + 180 }, instant), null);
+  close(solarElevationAtInstant(sun, instant), 90);
+  close(solarElevationAtInstant({ latitude: 0, longitude: sun.longitude + 90 }, instant), 0);
+  assert.equal(solarElevationAtInstant({ latitude: -sun.latitude, longitude: sun.longitude + 180 }, instant), null);
   const place = { ...ground, latitude: 45, longitude: sun.longitude, elevation: 2000 };
-  const angle = incidenceAtInstant(place, instant);
-  close(uvAtInstant(place, instant), 15 * Math.cos(angle * Math.PI / 180) ** 2.42);
-  close(incidenceAtInstant(place, instant), incidenceAtInstant({ ...place, elevation: 0 }, instant));
+  const angle = solarElevationAtInstant(place, instant);
+  close(uvAtInstant(place, instant), 15 * Math.sin(angle * Math.PI / 180) ** 2.42);
+  close(solarElevationAtInstant(place, instant), solarElevationAtInstant({ ...place, elevation: 0 }, instant));
 });
 
 test('annual daylight range includes the horizon except during polar day or night', () => {
   const summer = day('2026-06-21');
   const declination = subsolarPoint(summer).latitude;
-  const regular = dailyModel({ ...ground, latitude: 52 }, summer).daylightIncidence;
-  close(regular.min, 52 - declination);
-  close(regular.max, 90);
-  const polarDay = dailyModel({ ...ground, latitude: 75 }, summer).daylightIncidence;
-  close(polarDay.min, 75 - declination);
-  close(polarDay.max, 180 - 75 - declination);
-  assert.equal(dailyModel({ ...ground, latitude: -75 }, summer).daylightIncidence, null);
-  const pole = dailyModel({ ...ground, latitude: 90 }, summer).daylightIncidence;
+  const regular = dailyModel({ ...ground, latitude: 52 }, summer).daylightSolarElevation;
+  close(regular.min, 0);
+  close(regular.max, 90 - 52 + declination);
+  const polarDay = dailyModel({ ...ground, latitude: 75 }, summer).daylightSolarElevation;
+  close(polarDay.min, 75 + declination - 90);
+  close(polarDay.max, 90 - 75 + declination);
+  assert.equal(dailyModel({ ...ground, latitude: -75 }, summer).daylightSolarElevation, null);
+  const pole = dailyModel({ ...ground, latitude: 90 }, summer).daylightSolarElevation;
   close(pole.min, pole.max);
   for (const latitude of [-90, -75, 0, 52, 75, 90]) {
     for (const point of buildAnnualData({ ...ground, latitude }, 2028)) {
-      if (!point.daylightIncidence) continue;
-      const { min, max } = point.daylightIncidence;
+      if (!point.daylightSolarElevation) continue;
+      const { min, max } = point.daylightSolarElevation;
       assert.ok(min >= 0 && min <= max && max <= 90);
     }
   }

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent, type KeyboardEvent } from 'react';
 import { Slider } from '@/components/ui/slider';
 import { type Location } from '@/lib/locations';
-import { dailyModel, daysInYear, formatHour, incidenceAtInstant, localCalendarTime, localDateTimeToInstant, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
+import { dailyModel, daysInYear, formatHour, solarElevationAtInstant, localCalendarTime, localDateTimeToInstant, subsolarPoint, uvAtInstant, wrapLongitude } from '@/lib/solar';
 import { project, unproject, visibleLine, nightPath, type GeoPoint } from '@/lib/globe';
 import { useLanguage } from './language';
 
@@ -48,7 +48,7 @@ export default function SolarGlobe({ location, year, onPick }: {
   const selectedDay = Math.floor((localDate.getTime() - Date.UTC(year, 0, 1)) / 86_400_000);
   const result = dailyModel(location, localDate);
   const currentUv = uvAtInstant(location, instant);
-  const incidence = incidenceAtInstant(location, instant);
+  const solarElevation = solarElevationAtInstant(location, instant);
   const localLabel = new Intl.DateTimeFormat(locale, { timeZone: location.timezone, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(instant);
   const dateLabel = new Intl.DateTimeFormat(locale, { timeZone: 'UTC', day: 'numeric', month: 'short', year: 'numeric' }).format(localDate);
 
@@ -138,13 +138,13 @@ export default function SolarGlobe({ location, year, onPick }: {
             {picking && <p className="fact-note globe-status">{t("Finding the nearest town and its elevation…")}</p>}
             {pickError && <p className="globe-error" role="alert">{t(pickError)}</p>}
             <div className="peak-stat"><span>{t("Theoretical UV at the chosen time")}</span><strong>{number(currentUv, 1)}</strong></div>
-            <div className={`peak-stat incidence-stat${incidence === null ? ' nighttime-stat' : ''}`}><span>{t("Incidence angle")}</span><strong>{incidence === null ? t('Sun below the horizon') : `${number(incidence, 1)}°`}</strong><small>{t("0° overhead · 90° at the horizon")}</small></div>
+            <div className={`peak-stat solar-angle-stat${solarElevation === null ? ' nighttime-stat' : ''}`}><span>{t("Sun angle")}</span><strong>{solarElevation === null ? t('Sun below the horizon') : `${number(solarElevation, 1)}°`}</strong><small>{t("0° at the horizon · 90° overhead")}</small></div>
             <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(result.maxUv, 1)}</strong><small>{t("Selected local day")}</small></div>
             <div className="peak-stat window-stat"><span>{t("Low-UV window on the chosen date")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t("UVI below 3 · local time")}</small></div>
           </div>
         </div>
         <details className="evidence"><summary>{t("Sources and model")}</summary><div className="evidence-content">
-        <p className="fact-note">{t("Incidence is measured from the vertical on horizontal ground (solar zenith angle): 0° overhead, 90° at the horizon. The annual minimum and maximum cover daylight only, using the day’s fixed solar declination. Terrain slope and atmospheric refraction are not included.")} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a></p>
+        <p className="fact-note">{t("Solar elevation is the angle above a flat horizon: 0° at the horizon, 90° overhead. The annual minimum and maximum cover daylight only, using the day’s fixed solar declination. Terrain slope and atmospheric refraction are not included.")} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a></p>
         <p className="fact-note">{t("Direct rays produce stronger UV than grazing rays. The model includes elevation (about +10% UV per km), clear sky and fixed ozone. Low UV does not mean zero risk.")}</p>
         <p className="fact-note globe-index-note">{t("Globe selections use the nearest place in")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">{t("GeoNames")}</a>{t("’ town and city index. Results apply to that place; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">{t("CC BY 4.0")}</a>.</p>
         <p className="fact-note">{t("Solar geometry:")} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">{t("NOAA")}</a>{t(". UV:")} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">{t("Madronich")}</a>{t(". Altitude:")} <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">{t("WHO")}</a> {t("and")} <a href="https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-77uvindex_mini.html" target="_blank" rel="noreferrer">{t("JMA")}</a> {t("give approximate rules; actual mountain conditions vary. Elevation:")} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">{t("Copernicus / Open-Meteo")}</a>{t(". Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>. {t('The date and time controls use the selected place’s local time, including daylight saving. Missing clock times are skipped; repeated times use their first occurrence. Dates use the {year} calendar.', { year })}</p></div></details>

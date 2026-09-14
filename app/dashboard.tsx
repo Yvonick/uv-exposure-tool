@@ -246,8 +246,8 @@ function AnnualTooltip({ active, payload }: { active?: boolean; payload?: Array<
         {lowWindow(point.lowWindows)} · {t('UVI below 3')}
       </p>
       <p className="chart-tooltip-note">{t('Theoretical UV peak')} · {number(point.maxUv, 1)} {t("UVI")}</p>
-      <p className="chart-tooltip-note">{t('Daylight incidence angle')} · {point.daylightIncidence ? t('min {min}° · max {max}°', { min: number(point.daylightIncidence.min, 1), max: number(point.daylightIncidence.max, 1) }) : t('No daylight')}</p>
-      <p className="chart-tooltip-note">{t('0° overhead · 90° at the horizon')}</p>
+      <p className="chart-tooltip-note">{t('Daylight sun angle')} · {point.daylightSolarElevation ? t('min {min}° · max {max}°', { min: number(point.daylightSolarElevation.min, 1), max: number(point.daylightSolarElevation.max, 1) }) : t('No daylight')}</p>
+      <p className="chart-tooltip-note">{t('0° at the horizon · 90° overhead')}</p>
     </FloatingChartTooltip>
   );
 }
