@@ -27,6 +27,7 @@ export default function SolarGlobe({ location, year, onPick }: {
     setExploration(previous => ({ ...previous, globe: { ...selection, year } }));
   }, [selection, year, setExploration]);
   const [view, setView] = useState<GeoPoint>({ latitude: 20, longitude: location.longitude });
+  const [keyboardCenter, setKeyboardCenter] = useState<GeoPoint | null>(null);
   const [lines, setLines] = useState<GeoPoint[][]>([]);
   const [mapError, setMapError] = useState(false);
   const [picking, setPicking] = useState(false);
@@ -35,7 +36,7 @@ export default function SolarGlobe({ location, year, onPick }: {
   const pickSequence = useRef(0);
   const drag = useRef<{ x: number; y: number; view: GeoPoint; moved: boolean } | null>(null);
 
-  useEffect(() => { setView({ latitude: Math.max(-90, Math.min(90, location.latitude)), longitude: location.longitude }); }, [location.latitude, location.longitude]);
+  useEffect(() => { setView({ latitude: Math.max(-90, Math.min(90, location.latitude)), longitude: location.longitude }); setKeyboardCenter(null); }, [location.latitude, location.longitude]);
   useEffect(() => {
     const controller = new AbortController();
     fetch('/data/land.geojson', { signal: controller.signal }).then((response) => {
@@ -103,14 +104,16 @@ export default function SolarGlobe({ location, year, onPick }: {
     if (!drag.current) return;
     const dx = event.clientX - drag.current.x, dy = event.clientY - drag.current.y;
     if (Math.hypot(dx, dy) > 5) drag.current.moved = true;
-    if (drag.current.moved) setView({ longitude: wrapLongitude(drag.current.view.longitude - dx * .45), latitude: Math.max(-90, Math.min(90, drag.current.view.latitude + dy * .35)) });
+    if (drag.current.moved) { setView({ longitude: wrapLongitude(drag.current.view.longitude - dx * .45), latitude: Math.max(-90, Math.min(90, drag.current.view.latitude + dy * .35)) }); setKeyboardCenter(null); }
   }
   function keyboard(event: KeyboardEvent<SVGSVGElement>) {
     const key = event.key;
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Enter', ' '].includes(key)) return;
     event.preventDefault();
     if (key === 'Enter' || key === ' ') { void selectPoint(view); return; }
-    setView((current) => ({ longitude: wrapLongitude(current.longitude + (key === 'ArrowLeft' ? -15 : key === 'ArrowRight' ? 15 : 0)), latitude: Math.max(-90, Math.min(90, current.latitude + (key === 'ArrowUp' ? 10 : key === 'ArrowDown' ? -10 : 0))) }));
+    const next = { longitude: wrapLongitude(view.longitude + (key === 'ArrowLeft' ? -15 : key === 'ArrowRight' ? 15 : 0)), latitude: Math.max(-90, Math.min(90, view.latitude + (key === 'ArrowUp' ? 10 : key === 'ArrowDown' ? -10 : 0))) };
+    setView(next);
+    setKeyboardCenter(next);
   }
 
   return (
@@ -137,6 +140,10 @@ export default function SolarGlobe({ location, year, onPick }: {
               <path d={`M${CENTER - 5},${CENTER}h10M${CENTER},${CENTER - 5}v10`} stroke="#3d5349" strokeWidth=".8" opacity=".6" aria-hidden="true" />
               {!sideSun && <text x="300" y="70" textAnchor="middle" className="globe-sun-caption">{t(sun.z > 0 ? 'Sunlight from the viewer’s direction' : 'Sunlight from behind the globe')}</text>}
             </svg>
+            <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">{keyboardCenter && t('View centred at {latitude}, {longitude}.', {
+              latitude: `${number(Math.abs(keyboardCenter.latitude), 1)}° ${t(keyboardCenter.latitude < 0 ? 'south' : 'north')}`,
+              longitude: `${number(Math.abs(keyboardCenter.longitude), 1)}° ${t(keyboardCenter.longitude < 0 ? 'west' : 'east')}`,
+            })}</p>
             {mapError && <p className="fact-note">{t("Coastlines could not load. Place selection still works.")}</p>}
           </div>
           <div className="globe-results" aria-live="polite" aria-busy={picking}>
@@ -144,6 +151,7 @@ export default function SolarGlobe({ location, year, onPick }: {
               <p className="globe-place">{location.name}</p>
               <p className="globe-place-meta">{[location.country, `${number(Math.abs(location.latitude), 1)}°${location.latitude < 0 ? 'S' : 'N'}`, location.selectionMode === 'pin' ? t('0 m assumed elevation') : t('{height} m elevation', { height: number(location.elevation) })].filter(Boolean).join(' · ')}</p>
               <p className="globe-local">{localLabel} · {t(location.timezoneFallback ? 'UTC' : 'local time')}</p>
+              <p className="globe-local">{t('Clear sky · typical seasonal ozone')}</p>
               {location.selectionDistanceKm !== undefined && <p className="globe-selection-note">{t('Nearest mapped place · {distance} km from your selection', { distance: location.selectionDistanceKm < 1 ? t('less than 1') : number(location.selectionDistanceKm) })}</p>}
               {location.selectionMode === 'pin' && <p className="globe-selection-note">{t('Exact pin · no mapped place within 100 km')}</p>}
               {location.timezoneFallback && <p className="globe-selection-note">{t('Time zone unavailable · using UTC')}</p>}
@@ -158,6 +166,7 @@ export default function SolarGlobe({ location, year, onPick }: {
         </div>
         <details className="evidence"><summary>{t("Sources and model")}</summary><div className="evidence-content">
           <p className="fact-note">{t(modelNotes.solarAngles)} <a href="https://gml.noaa.gov/grad/solcalc/glossary.html" target="_blank" rel="noreferrer">NOAA ↗</a> · <a href="#annual-model" onClick={() => { const panel = document.getElementById("annual-model"); if (panel instanceof HTMLDetailsElement) panel.open = true; }}>{t("Yearly model assumptions")}</a></p>
+          <p className="fact-note">{t('Ozone used: {ozone} DU (Dobson units), interpolated from KNMI MSR2 monthly averages for 2016–2025.', { ozone: number(result.uvCurve.ozoneDU) })} <a href="https://doi.org/10.21944/temis-ozone-msr2" target="_blank" rel="noreferrer">KNMI ↗</a></p>
           <p className="fact-note">{t(modelNotes.globeSelection)}</p>
           <p className="fact-note">{t(modelNotes.clock, { year })}</p>
           <p className="fact-note globe-index-note">{t("Place names:")} <a href="https://www.geonames.org/" target="_blank" rel="noreferrer">GeoNames</a>{t("’ town and city index; small villages and landmarks may be absent.")} <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0</a>. {t("Coastlines:")} <a href="https://www.naturalearthdata.com/about/terms-of-use/" target="_blank" rel="noreferrer">{t("Natural Earth, public domain")}</a>.</p>

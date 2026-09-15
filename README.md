@@ -22,14 +22,25 @@ The locally bundled GeoNames cities5000 index loads only on the first globe sele
 
 Dose is calculated as UV Index × minutes × 0.015 standard erythemal doses (SED), using 1 SED = 100 erythemally weighted J/m². The 1 SED daily reference is attributed to ARPANSA and is not scaled by phototype. It is not a per-outing allowance or a no-damage boundary. The calculator does not track a user's accumulated daily dose. Surface reflectance ranges are not personal exposure multipliers or statistical confidence intervals.
 
-The prototype uses UV forecast data from CAMS Global through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api), plus Open-Meteo geocoding. Its annual chart combines solar geometry with the clear-sky approximation published by Sasha Madronich:
+Live UV uses CAMS Global through [Open-Meteo](https://open-meteo.com/en/docs/air-quality-api). The theoretical heatmap and globe use the [KNMI/TEMIS v2.x erythemal parameterisation](https://www.temis.nl/uvradiation/product/uvi-uvd.html), with the updated 2017 coefficients and the [Allaart et al. functional form](https://doi.org/10.1017/S1350482703001130):
 
 ```text
-UVI ≈ 12.5 × max(0, sin(sun angle above horizon))^2.42 × (ozone / 300 DU)^-1.23
-Theoretical altitude adjustment = 1 + 0.10 × elevation in km
+mu = sin(solar elevation); muX = mu × (1 − 0.2755) + 0.2755
+UVA = 2.0877 × muX × exp(−1.0597 / muX)
+X = 1000 × mu / ozoneDU
+UVI = UVA × (0.0477 × X^1.6325 + 5.6499 / ozoneDU + 0.0485) / 0.025
+UVI *= Earth–Sun distance factor × (1 + 0.05 × elevation in km)
 ```
 
-The theoretical model holds ozone at 300 DU, assumes clear sky, clean air and low surface reflection, and applies the selected location's elevation to both peak UV and UVI 3 crossings. The 10%/km adjustment is approximate, especially at high elevations. CAMS live data is not multiplied again. This is a theoretical planning model, not a forecast or personal medical advice.
+The daylight formula includes scattered UV at the horizon. Below the geometric horizon the app returns zero; twilight UV is deliberately excluded. The fit retains its reference surface albedo of 0.09 and implicit reference atmosphere, without explicit cloud, snow, variable aerosol or terrain-shadow corrections. The elevation factor is TEMIS's approximately 5% per km, including below-sea-level locations. These assumptions are shown in the model panel and especially limit polar, low-Sun and mountain estimates. Live CAMS values are not modified.
+
+Ozone uses the equal-year mean of each calendar month over **2016–2025**, from [KNMI MSR2](https://doi.org/10.21944/temis-ozone-msr2), whose method is described by [Van der A et al. (2015)](https://doi.org/10.5194/amt-8-3021-2015). All 120 monthly fields were checked. Native 0.5° data is reduced to a 2° global grid, integer DU, with longitude-independent poles. Bilinear spatial interpolation wraps the date line; linear interpolation between the 15th of each month handles leap years and December/January. Each local calendar day uses one ozone value. These are typical seasonal ozone patterns, not UV observations or forecasts for the displayed year.
+
+The compact grid's interpolation error against all 3,119,040 native monthly-mean nodes is 0.383 DU RMS and at most 6.063 DU; this measures data reduction only, not ozone or UV model accuracy. Rebuild with `node scripts/prepare-ozone.mjs`; cached source bytes stay in ignored `work/msr2`. Exact byte ranges, input/output SHA-256 hashes and processing metadata are in `public/data/ozone-provenance.json`. No additional runtime API or dependency is needed.
+
+Earth–Sun distance follows Kepler's equation using the [TEMIS perihelion table](https://www.temis.nl/uvradiation/product/ellipse.html), bundled for 1900–2100. Outside that table, the helper uses a mean orbit (3 January, eccentricity 0.0167); the page currently displays the present calendar year. NOAA solar geometry remains unchanged. Daily UVI 3 crossings are solved from the same monotonic TEMIS curve used for the heatmap, including polar day/night and intervals crossing midnight. The globe uses the actual selected instant for its solar angle, so its instantaneous value can differ slightly from the daily fixed-declination approximation.
+
+Screen readers identify the fictional skin portraits as illustrations. Keyboard globe rotation announces the new view centre in the selected language without adding visible text. Validation notes and representative before/after comparisons are in `docs/temis-validation.md`.
 
 ## Why the threshold is 3
 
@@ -57,7 +68,9 @@ npm run build
 ## Sources
 
 - [WHO: Radiation — the ultraviolet (UV) index](https://www.who.int/news-room/questions-and-answers/item/radiation-the-ultraviolet-%28uv%29-index)
-- [Madronich (2007): Analytic formula for the clear-sky UV index](https://pubmed.ncbi.nlm.nih.gov/18028230/)
+- [KNMI/TEMIS: UV calculation and v2.x coefficients](https://www.temis.nl/uvradiation/product/uvi-uvd.html)
+- [Allaart et al. (2004): UV model using solar zenith angle and total ozone](https://doi.org/10.1017/S1350482703001130)
+- [KNMI MSR2: total ozone reanalysis](https://doi.org/10.21944/temis-ozone-msr2)
 - [Open-Meteo Air Quality API](https://open-meteo.com/en/docs/air-quality-api)
 - [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api)
 - [RIVM: UV radiation and sunscreen products, Table 1](https://www.rivm.nl/bibliotheek/rapporten/2023-0426.pdf#page=19)
@@ -73,7 +86,7 @@ npm run build
 - [GeoNames: populated places, CC BY 4.0](https://download.geonames.org/export/dump/)
 - [Japan Meteorological Agency: reflection and UV Index enhancement](https://www.jma.go.jp/jma/kishou/know/env/uvhp/3-76uvindex_mini.html)
 
-Evidence reviewed 9 September 2026. Source links and specific findings are also available beside each section on the page.
+Evidence reviewed 15 September 2026. Source links and specific findings are also available beside each section on the page.
 
 ## Model checks
 

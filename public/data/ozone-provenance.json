@@ -1,0 +1,1100 @@
+{
+  "dataset": "KNMI Multi-Sensor Reanalysis (MSR2) total ozone",
+  "doi": "https://doi.org/10.21944/temis-ozone-msr2",
+  "paper": "https://doi.org/10.5194/amt-8-3021-2015",
+  "source": "https://d1qb6yzwaaq4he.cloudfront.net/protocols/o3field/msr2/MSR-2.nc",
+  "retrieved": "2026-09-15",
+  "startYear": 2016,
+  "endYear": 2025,
+  "method": "Equal-year mean for each calendar month; 0.5-degree native nodes subsampled to 2 degrees; pole rows averaged over longitude; rounded to 1 DU. Runtime bilinear spatial interpolation and linear time interpolation between monthly centres.",
+  "headerSha256": "129870fea9cae983db34759aee81dbeb06101f7faf6378597d2846d983242dea",
+  "outputSha256": "3e0a16679836040f6a0d9b42c137e4ce04d71f9951cdcf6f003b33362ef032ab",
+  "outputBytes": 786353,
+  "spatialApproximation": {
+    "maximumErrorDU": 6.0625,
+    "rootMeanSquareErrorDU": 0.38278162275850014,
+    "comparedNativeNodes": 3119040
+  },
+  "inputs": [
+    {
+      "year": 2016,
+      "month": 1,
+      "byteRange": [
+        713077812,
+        713601983
+      ],
+      "sha256": "77ac50d7fcd51abfd777674ba6917d4a176ce33fbaab0e1b5ce4ebfe514193dc"
+    },
+    {
+      "year": 2016,
+      "month": 2,
+      "byteRange": [
+        714121824,
+        714645995
+      ],
+      "sha256": "7e440c2c99a6d6b7d7d585154d5a6795da200df34c4d20615e4fca52481b2f42"
+    },
+    {
+      "year": 2016,
+      "month": 3,
+      "byteRange": [
+        715165836,
+        715690007
+      ],
+      "sha256": "a17ca7d3306ff5b1878c338af768b9bef903354c0807aa1c4c87e3e218f106ea"
+    },
+    {
+      "year": 2016,
+      "month": 4,
+      "byteRange": [
+        716209848,
+        716734019
+      ],
+      "sha256": "d47b877ba7662f0862ed633fc1b1992d7e3374936dfcffd75a8353fd90ea7583"
+    },
+    {
+      "year": 2016,
+      "month": 5,
+      "byteRange": [
+        717253860,
+        717778031
+      ],
+      "sha256": "245bd22312e11258ef478c60b4c641db1c51888c69d597895f84c52bfcb57184"
+    },
+    {
+      "year": 2016,
+      "month": 6,
+      "byteRange": [
+        718297872,
+        718822043
+      ],
+      "sha256": "15a05ef64d541a0c9be46e502094243ba51284b75c3e0c767baeaf72b1bd76dd"
+    },
+    {
+      "year": 2016,
+      "month": 7,
+      "byteRange": [
+        719341884,
+        719866055
+      ],
+      "sha256": "c8323e155e8c14b42b7cd185e5b64f893f753b6687137c7989bc555b817bb571"
+    },
+    {
+      "year": 2016,
+      "month": 8,
+      "byteRange": [
+        720385896,
+        720910067
+      ],
+      "sha256": "989668dbe15d2e82b47965a7f3141530621eae2706709d0b09f6750f3b2637d3"
+    },
+    {
+      "year": 2016,
+      "month": 9,
+      "byteRange": [
+        721429908,
+        721954079
+      ],
+      "sha256": "b008829101787793a92f088b8984b13fd9e8aa1c00ac4b55602816a3acc44e60"
+    },
+    {
+      "year": 2016,
+      "month": 10,
+      "byteRange": [
+        722473920,
+        722998091
+      ],
+      "sha256": "4866b8e922aa97b91b9c5dffa3330e811ecc1c989bf8c28b35b5c22a4a231b60"
+    },
+    {
+      "year": 2016,
+      "month": 11,
+      "byteRange": [
+        723517932,
+        724042103
+      ],
+      "sha256": "9a5be13d54e5d724edd96fc9ce4aeb69d21b48b7243a378bade57707eaf11669"
+    },
+    {
+      "year": 2016,
+      "month": 12,
+      "byteRange": [
+        724561944,
+        725086115
+      ],
+      "sha256": "44f6a222d40f161705c7ba0382752983a80d545dcc0c3638e3c244e4da20d5d3"
+    },
+    {
+      "year": 2017,
+      "month": 1,
+      "byteRange": [
+        725605956,
+        726130127
+      ],
+      "sha256": "201a3cf05a7b99e3b6f3902b3fcddf155fae1084155c45ccafa0c462eb9b5190"
+    },
+    {
+      "year": 2017,
+      "month": 2,
+      "byteRange": [
+        726649968,
+        727174139
+      ],
+      "sha256": "c67c5e0feaa61513c162bab206b2ce2251309234125edf722cc968800d547101"
+    },
+    {
+      "year": 2017,
+      "month": 3,
+      "byteRange": [
+        727693980,
+        728218151
+      ],
+      "sha256": "6b33994c2cdf121e95c55e7b701ba60fda693650a7284c4e919233574c235778"
+    },
+    {
+      "year": 2017,
+      "month": 4,
+      "byteRange": [
+        728737992,
+        729262163
+      ],
+      "sha256": "1fdf05dc73f8a1341a6be6f3625af9b23937bb34d278a9ba5207d2f5cc6b14e6"
+    },
+    {
+      "year": 2017,
+      "month": 5,
+      "byteRange": [
+        729782004,
+        730306175
+      ],
+      "sha256": "40852b505123e7bb55c803cb9521ed52fe00f75225386c2ff5c86ad09244b640"
+    },
+    {
+      "year": 2017,
+      "month": 6,
+      "byteRange": [
+        730826016,
+        731350187
+      ],
+      "sha256": "3526194602871873d300b22e68a6989d8e760231393dda4017bdcc78f22b8cde"
+    },
+    {
+      "year": 2017,
+      "month": 7,
+      "byteRange": [
+        731870028,
+        732394199
+      ],
+      "sha256": "6a882be2a802bd9a49df38cc54340ccc5ca82ad140055d346981300152736841"
+    },
+    {
+      "year": 2017,
+      "month": 8,
+      "byteRange": [
+        732914040,
+        733438211
+      ],
+      "sha256": "46f2844e0a60918a883e6bba7f60dc956571ce810e4abf0bfee323e8c49e6b38"
+    },
+    {
+      "year": 2017,
+      "month": 9,
+      "byteRange": [
+        733958052,
+        734482223
+      ],
+      "sha256": "e7bdcac7f80a0b41e9d991860755c79b8e136422d117463bbccdb139fdded613"
+    },
+    {
+      "year": 2017,
+      "month": 10,
+      "byteRange": [
+        735002064,
+        735526235
+      ],
+      "sha256": "f624d97454aa10023034e5731d8d79e0661c62a3f4b9a9dc2869b3232fb0a6ab"
+    },
+    {
+      "year": 2017,
+      "month": 11,
+      "byteRange": [
+        736046076,
+        736570247
+      ],
+      "sha256": "0247685b42d0ef99a1f4865a3d4b9b9f56b643c237fa06212a24e29eee801ba5"
+    },
+    {
+      "year": 2017,
+      "month": 12,
+      "byteRange": [
+        737090088,
+        737614259
+      ],
+      "sha256": "9309b66c9d63f6b243d0c8a6dc8b228ca0609e1237a90f984b0c1793dd30eab4"
+    },
+    {
+      "year": 2018,
+      "month": 1,
+      "byteRange": [
+        738134100,
+        738658271
+      ],
+      "sha256": "ac1e48f368e9048bc45d94c234669c523c76f0d7c3f0b6f0105807f45f2ef91e"
+    },
+    {
+      "year": 2018,
+      "month": 2,
+      "byteRange": [
+        739178112,
+        739702283
+      ],
+      "sha256": "deb57b2172286b3983d298f7b6fbb8c9f7af1351a6cd6359554677b12873077a"
+    },
+    {
+      "year": 2018,
+      "month": 3,
+      "byteRange": [
+        740222124,
+        740746295
+      ],
+      "sha256": "ebda3aef87b99fa13aca9272af8366cd50431409b9f6214d5fb86f553b78ea4c"
+    },
+    {
+      "year": 2018,
+      "month": 4,
+      "byteRange": [
+        741266136,
+        741790307
+      ],
+      "sha256": "4be956e38afe398945ae43e64c123115252c341eb809dc3ec9cd2f96fce6a2d0"
+    },
+    {
+      "year": 2018,
+      "month": 5,
+      "byteRange": [
+        742310148,
+        742834319
+      ],
+      "sha256": "87c5d6927fcf0e38ac6bf3fcd95dfa41c78eaf62dbca73f5a67d29f69eeb1caf"
+    },
+    {
+      "year": 2018,
+      "month": 6,
+      "byteRange": [
+        743354160,
+        743878331
+      ],
+      "sha256": "4c340073b3233d5006752f73bed1d6021ebe22913c6d22619d4fbc28cc6a37b7"
+    },
+    {
+      "year": 2018,
+      "month": 7,
+      "byteRange": [
+        744398172,
+        744922343
+      ],
+      "sha256": "8bed180bd46851875322932685603c2fe0e6018200f418f3871ac3da6d13747b"
+    },
+    {
+      "year": 2018,
+      "month": 8,
+      "byteRange": [
+        745442184,
+        745966355
+      ],
+      "sha256": "f7525dea4ba9fcfc38cdfe1a2fe5be6db4ba791882ca16e9ea0a6dd85a0b8e19"
+    },
+    {
+      "year": 2018,
+      "month": 9,
+      "byteRange": [
+        746486196,
+        747010367
+      ],
+      "sha256": "a6f7fab131da6665757e92ab2815924b96197de8dff1f9a7a2cddd9acef6ae6b"
+    },
+    {
+      "year": 2018,
+      "month": 10,
+      "byteRange": [
+        747530208,
+        748054379
+      ],
+      "sha256": "c581ad279ab8e19d4f87a227797922b34348ec59a692a2af1895bb14eb4c4203"
+    },
+    {
+      "year": 2018,
+      "month": 11,
+      "byteRange": [
+        748574220,
+        749098391
+      ],
+      "sha256": "ee41c1210934ba44926e6d2bfe0de5b8ae066e14ee9eb13dd1ef3907c88446c3"
+    },
+    {
+      "year": 2018,
+      "month": 12,
+      "byteRange": [
+        749618232,
+        750142403
+      ],
+      "sha256": "53a54f131100fd3a997b01a057ea849e5164033ab6ecaf6a965c548c90e87064"
+    },
+    {
+      "year": 2019,
+      "month": 1,
+      "byteRange": [
+        750662244,
+        751186415
+      ],
+      "sha256": "20bcd4257d46c249c1d6d4c8925098d827da85a9897a9af9ee5118d5f872b1e5"
+    },
+    {
+      "year": 2019,
+      "month": 2,
+      "byteRange": [
+        751706256,
+        752230427
+      ],
+      "sha256": "6030af4ced121bc524087dca375ee80a6107c2d8c22ead268e919e3c9c3c7a43"
+    },
+    {
+      "year": 2019,
+      "month": 3,
+      "byteRange": [
+        752750268,
+        753274439
+      ],
+      "sha256": "6db389eb5ec05cb39a18f4461b809f686180c64e2a2111349c1c18ae2dca5a81"
+    },
+    {
+      "year": 2019,
+      "month": 4,
+      "byteRange": [
+        753794280,
+        754318451
+      ],
+      "sha256": "fda018083cb9e49561396258bc11b7f4693dff73e28e8bf915645d6148f6cb42"
+    },
+    {
+      "year": 2019,
+      "month": 5,
+      "byteRange": [
+        754838292,
+        755362463
+      ],
+      "sha256": "48d5e8524445527b44a10f22e27225a4c3cfdbf5157d4c09c711f8cafafc1856"
+    },
+    {
+      "year": 2019,
+      "month": 6,
+      "byteRange": [
+        755882304,
+        756406475
+      ],
+      "sha256": "302a66cd49d7fad850c90703b552a84d99150a849661093b6f30b81fe5129204"
+    },
+    {
+      "year": 2019,
+      "month": 7,
+      "byteRange": [
+        756926316,
+        757450487
+      ],
+      "sha256": "638c5e39572be14dcbb4f6f2ee7e7109a4fb988e4ddd768310d9a18aede0377f"
+    },
+    {
+      "year": 2019,
+      "month": 8,
+      "byteRange": [
+        757970328,
+        758494499
+      ],
+      "sha256": "f1d509748db13ad392b4863b53e02a0b6422da0f03274d84fe1ac372b0080f0c"
+    },
+    {
+      "year": 2019,
+      "month": 9,
+      "byteRange": [
+        759014340,
+        759538511
+      ],
+      "sha256": "5a8247f1673aa1d18fd458b5e241732d1393682cdb3df5b9730af765e30ecb99"
+    },
+    {
+      "year": 2019,
+      "month": 10,
+      "byteRange": [
+        760058352,
+        760582523
+      ],
+      "sha256": "6e1a482f0c7ded6b1dd656cf163299606f745a72f5bc7e9ad06f26b2732e0ec8"
+    },
+    {
+      "year": 2019,
+      "month": 11,
+      "byteRange": [
+        761102364,
+        761626535
+      ],
+      "sha256": "a70258f572d98f9e47e5377abf83129a91c2c4f49be80c037ccebd8a56239644"
+    },
+    {
+      "year": 2019,
+      "month": 12,
+      "byteRange": [
+        762146376,
+        762670547
+      ],
+      "sha256": "d2d645ed94a9ee3ba1b5ec16e3772ee60a5108621e92b6935e4be128da78f387"
+    },
+    {
+      "year": 2020,
+      "month": 1,
+      "byteRange": [
+        763190388,
+        763714559
+      ],
+      "sha256": "14d5ef10fd0937de3038e128a0eac2c3e580dcc2bda02a657aa8ae3d8652380c"
+    },
+    {
+      "year": 2020,
+      "month": 2,
+      "byteRange": [
+        764234400,
+        764758571
+      ],
+      "sha256": "2fe0dba6fc8cb7275ff01116b53167c14784126fcaae9a63ae42ea99ede2142a"
+    },
+    {
+      "year": 2020,
+      "month": 3,
+      "byteRange": [
+        765278412,
+        765802583
+      ],
+      "sha256": "9da2e0a9fe62142c1778fff744d9415bb1a760be0c6862f0d0d56b4e73989dd4"
+    },
+    {
+      "year": 2020,
+      "month": 4,
+      "byteRange": [
+        766322424,
+        766846595
+      ],
+      "sha256": "368781900b2d62426e922b70b0e935a1d26f1ef867b6fab3520ee882867754f3"
+    },
+    {
+      "year": 2020,
+      "month": 5,
+      "byteRange": [
+        767366436,
+        767890607
+      ],
+      "sha256": "3f495da40b82fa523fe28cf3747d5aadc52bcf1097ef65d4fdf37aa7b447ad68"
+    },
+    {
+      "year": 2020,
+      "month": 6,
+      "byteRange": [
+        768410448,
+        768934619
+      ],
+      "sha256": "07528a11cdb626a5bbacc5c6ca5db94279d0b1646d4a66831a7db6f4f2fc8862"
+    },
+    {
+      "year": 2020,
+      "month": 7,
+      "byteRange": [
+        769454460,
+        769978631
+      ],
+      "sha256": "897c566d8f13841496fd5f7fefc36d53209c96c3aa4e0799d410fa77f23d81d0"
+    },
+    {
+      "year": 2020,
+      "month": 8,
+      "byteRange": [
+        770498472,
+        771022643
+      ],
+      "sha256": "251a68174b58eafe2354d7624a87e21cbfcd52c7e4cc1ba035a043dfd85021f5"
+    },
+    {
+      "year": 2020,
+      "month": 9,
+      "byteRange": [
+        771542484,
+        772066655
+      ],
+      "sha256": "84fbc38fb76ae24263539d42e42e5c459ccdd7bddedb74f41874cab37e93db5a"
+    },
+    {
+      "year": 2020,
+      "month": 10,
+      "byteRange": [
+        772586496,
+        773110667
+      ],
+      "sha256": "5a1b01492bc3445ac062e9c70692c36c5efdf2ff73f6fc8d16792afd50eb014b"
+    },
+    {
+      "year": 2020,
+      "month": 11,
+      "byteRange": [
+        773630508,
+        774154679
+      ],
+      "sha256": "86d9dfd2f56f42f1e14128273f6cf4babf28b6cf8921abd82e40923a5f5051f2"
+    },
+    {
+      "year": 2020,
+      "month": 12,
+      "byteRange": [
+        774674520,
+        775198691
+      ],
+      "sha256": "b68ec4734836d28dfe832dc11221f01ae4a4320386246f7dfc45e392f751dd6d"
+    },
+    {
+      "year": 2021,
+      "month": 1,
+      "byteRange": [
+        775718532,
+        776242703
+      ],
+      "sha256": "cbaa39e351c74855ba9747ffa024f833b1b105ce0fb39c42b00df1e5148b6e48"
+    },
+    {
+      "year": 2021,
+      "month": 2,
+      "byteRange": [
+        776762544,
+        777286715
+      ],
+      "sha256": "a8dccc297afa5e07a54c4273b2ecba7bedc0adbe40908f07d9f9a5862f9e0f72"
+    },
+    {
+      "year": 2021,
+      "month": 3,
+      "byteRange": [
+        777806556,
+        778330727
+      ],
+      "sha256": "916315f876879ed3435cbab9aa14c2b3ed6dd314e04b99688a1f88d836fe44eb"
+    },
+    {
+      "year": 2021,
+      "month": 4,
+      "byteRange": [
+        778850568,
+        779374739
+      ],
+      "sha256": "f475a0636895865c1b7df49c2ee5c2dca617cf5ea02e4aca1e71f2db2924f8b4"
+    },
+    {
+      "year": 2021,
+      "month": 5,
+      "byteRange": [
+        779894580,
+        780418751
+      ],
+      "sha256": "8e2de1cbaef5071a6d2743a416a9be198071431bedae8fc121da9698e7e7b9bc"
+    },
+    {
+      "year": 2021,
+      "month": 6,
+      "byteRange": [
+        780938592,
+        781462763
+      ],
+      "sha256": "6e35f26e87b37c30752f278c183eebe9e47c1c1640fec17ddd4fba6d65c347c8"
+    },
+    {
+      "year": 2021,
+      "month": 7,
+      "byteRange": [
+        781982604,
+        782506775
+      ],
+      "sha256": "a0677da3c7ff484e97f47d970b9a4813b53610dbb47508bb0c0a9b2e28d12ed8"
+    },
+    {
+      "year": 2021,
+      "month": 8,
+      "byteRange": [
+        783026616,
+        783550787
+      ],
+      "sha256": "f0eadac665c2ab514f5626f9592a691c865633cd91ca48cce11a2806475910b8"
+    },
+    {
+      "year": 2021,
+      "month": 9,
+      "byteRange": [
+        784070628,
+        784594799
+      ],
+      "sha256": "f1ffaaf317b1c085a1ddd638a627802809a1578691edcafcfa3a521f7a8e1749"
+    },
+    {
+      "year": 2021,
+      "month": 10,
+      "byteRange": [
+        785114640,
+        785638811
+      ],
+      "sha256": "12ac1baf96a0e2764c664cc5957fd17c2eaadd11dfcbb9aafc5bd4e9cb7c2051"
+    },
+    {
+      "year": 2021,
+      "month": 11,
+      "byteRange": [
+        786158652,
+        786682823
+      ],
+      "sha256": "1bbcc4ba0c9a400924a91cbb4e73efa0569c1a249980fb9ca19b5b7b236e0a85"
+    },
+    {
+      "year": 2021,
+      "month": 12,
+      "byteRange": [
+        787202664,
+        787726835
+      ],
+      "sha256": "65f7c2fe9fd70337ce618fa4f64ddb347a1b1de6941da54968ea954b00399bc5"
+    },
+    {
+      "year": 2022,
+      "month": 1,
+      "byteRange": [
+        788246676,
+        788770847
+      ],
+      "sha256": "3b0425a4fea212ac8df2d16d2d7fcd77c9ed9c40f69e1585ec9de326073371cc"
+    },
+    {
+      "year": 2022,
+      "month": 2,
+      "byteRange": [
+        789290688,
+        789814859
+      ],
+      "sha256": "0f7bfd05411bbe026e43e414940940d6ad2de9818b2c07a56faf516d3247292c"
+    },
+    {
+      "year": 2022,
+      "month": 3,
+      "byteRange": [
+        790334700,
+        790858871
+      ],
+      "sha256": "f17aacebfd7baa6495cba21f91cfa652cfa7367247a2b478db4da4a632c6ed08"
+    },
+    {
+      "year": 2022,
+      "month": 4,
+      "byteRange": [
+        791378712,
+        791902883
+      ],
+      "sha256": "00a5f22dba217f947c07d2f0c6fc2ae01039d5a92480c3c4365de73b8803e375"
+    },
+    {
+      "year": 2022,
+      "month": 5,
+      "byteRange": [
+        792422724,
+        792946895
+      ],
+      "sha256": "30ce41c47021780b2e02bc8d027e1c657400ebf7399bc27216a41ff9e5a7aea3"
+    },
+    {
+      "year": 2022,
+      "month": 6,
+      "byteRange": [
+        793466736,
+        793990907
+      ],
+      "sha256": "a821450b68369ba488f6375350dfa1c83ca9902b5b03e0ba7804907683a27a8b"
+    },
+    {
+      "year": 2022,
+      "month": 7,
+      "byteRange": [
+        794510748,
+        795034919
+      ],
+      "sha256": "0a4359149fb93ccc09d47662d4c8315e923a7117549c962887205aaccd1392a2"
+    },
+    {
+      "year": 2022,
+      "month": 8,
+      "byteRange": [
+        795554760,
+        796078931
+      ],
+      "sha256": "91af84afae3ac6233e10b9de9d328275caf05aac5d3655faf76dc09f4c7459dc"
+    },
+    {
+      "year": 2022,
+      "month": 9,
+      "byteRange": [
+        796598772,
+        797122943
+      ],
+      "sha256": "c53c3ce8d3ac8155ff1ebfbc9dfacde22573aa4b3ec2d85dc00897b6472afa33"
+    },
+    {
+      "year": 2022,
+      "month": 10,
+      "byteRange": [
+        797642784,
+        798166955
+      ],
+      "sha256": "09f656796e91def40b6e794f54e08c8fdcc0432bdca167d3bb31848cde187c28"
+    },
+    {
+      "year": 2022,
+      "month": 11,
+      "byteRange": [
+        798686796,
+        799210967
+      ],
+      "sha256": "8ea95347321250ac2739f147611d08220c0dc7465c2b0122c12843b062e9c00d"
+    },
+    {
+      "year": 2022,
+      "month": 12,
+      "byteRange": [
+        799730808,
+        800254979
+      ],
+      "sha256": "ee8b4f97972c3ac1493876b8a0aaf5914fd85155b74a73a37dc14d81fe978618"
+    },
+    {
+      "year": 2023,
+      "month": 1,
+      "byteRange": [
+        800774820,
+        801298991
+      ],
+      "sha256": "d44385665f66a960534e8cb2ef48a5a18b395941ae0da2b7b866c1a2adea17ab"
+    },
+    {
+      "year": 2023,
+      "month": 2,
+      "byteRange": [
+        801818832,
+        802343003
+      ],
+      "sha256": "180f06f991f16e5059d7a10bf23f02665213269725203f3b33e44603fd0d0bc2"
+    },
+    {
+      "year": 2023,
+      "month": 3,
+      "byteRange": [
+        802862844,
+        803387015
+      ],
+      "sha256": "46fd2533c47dc1a92fd167ccf9d2bdec7b5b6f9aea0f5bfcc3ee3a4299d02c17"
+    },
+    {
+      "year": 2023,
+      "month": 4,
+      "byteRange": [
+        803906856,
+        804431027
+      ],
+      "sha256": "5598d6e119e3beff2eaf51ced9368bdb64f2422fa331c3d9e1177749fb5c13b1"
+    },
+    {
+      "year": 2023,
+      "month": 5,
+      "byteRange": [
+        804950868,
+        805475039
+      ],
+      "sha256": "7e570c060d7433d3f30aa9060ae8bce8be7b8b4ddd25a5e1b57238ac9ee7542f"
+    },
+    {
+      "year": 2023,
+      "month": 6,
+      "byteRange": [
+        805994880,
+        806519051
+      ],
+      "sha256": "b67212282a6bb737acfc2b82653bf297d80b8ab63418c2e665809cd334d7edfa"
+    },
+    {
+      "year": 2023,
+      "month": 7,
+      "byteRange": [
+        807038892,
+        807563063
+      ],
+      "sha256": "f05ad067611edfee82c5503b33a01982f91778572b23a7fe65b1cd1a9d07d95d"
+    },
+    {
+      "year": 2023,
+      "month": 8,
+      "byteRange": [
+        808082904,
+        808607075
+      ],
+      "sha256": "36736a995d4cc4959050c9e33e16a93b6ee6226da932db7b29c64b5b37ead446"
+    },
+    {
+      "year": 2023,
+      "month": 9,
+      "byteRange": [
+        809126916,
+        809651087
+      ],
+      "sha256": "0e2cd5848b2f5b6080d67582e1712e6f5a3d6f5ae0867ae7eff56e25577e0d14"
+    },
+    {
+      "year": 2023,
+      "month": 10,
+      "byteRange": [
+        810170928,
+        810695099
+      ],
+      "sha256": "8fac35c2a789756f2589aeb5d2bb46005b5146fac27b2daf90feca7d75722f4d"
+    },
+    {
+      "year": 2023,
+      "month": 11,
+      "byteRange": [
+        811214940,
+        811739111
+      ],
+      "sha256": "9dd8434696d1bf0bb55e24681b5b9669398d7f1b281fdfaa36a8b4d5bf941695"
+    },
+    {
+      "year": 2023,
+      "month": 12,
+      "byteRange": [
+        812258952,
+        812783123
+      ],
+      "sha256": "0ede3384f308dd3e94431d91c81b53e14b7aecc244d10e04e6f74c716c4ceea6"
+    },
+    {
+      "year": 2024,
+      "month": 1,
+      "byteRange": [
+        813302964,
+        813827135
+      ],
+      "sha256": "931a5eb575a0cb715bd78a2252604f10b5aaa07a0afc521122985509246156a3"
+    },
+    {
+      "year": 2024,
+      "month": 2,
+      "byteRange": [
+        814346976,
+        814871147
+      ],
+      "sha256": "5b50426e3548a8ffe39d4e7bc0bb9f620924359e6e7ee8fbec0637ba1061f192"
+    },
+    {
+      "year": 2024,
+      "month": 3,
+      "byteRange": [
+        815390988,
+        815915159
+      ],
+      "sha256": "92bfa1a9774d59aa64cc7eb14b8de0f68a914de1623f282dee07e169c20920aa"
+    },
+    {
+      "year": 2024,
+      "month": 4,
+      "byteRange": [
+        816435000,
+        816959171
+      ],
+      "sha256": "0f670e474609a696adee5989a5c45f11225688463350cea37b012ba25d90f283"
+    },
+    {
+      "year": 2024,
+      "month": 5,
+      "byteRange": [
+        817479012,
+        818003183
+      ],
+      "sha256": "b2630ad5df7ba284932dd8b6f766892393e0a1ebfb81cc93004d5347784eb468"
+    },
+    {
+      "year": 2024,
+      "month": 6,
+      "byteRange": [
+        818523024,
+        819047195
+      ],
+      "sha256": "568322637c1e06e60d7c0a4be35f3fe48b56a2361df26c63da179cf2b3e0a6c0"
+    },
+    {
+      "year": 2024,
+      "month": 7,
+      "byteRange": [
+        819567036,
+        820091207
+      ],
+      "sha256": "ace08108a8e3d2c646b440e2d54ead2b87e39868de303edfef35ff00a4dfbcab"
+    },
+    {
+      "year": 2024,
+      "month": 8,
+      "byteRange": [
+        820611048,
+        821135219
+      ],
+      "sha256": "65c43c90e84b1717b041be838d4e7afa71d0e88c1bb3c00a4479ad2cd4bc5fcf"
+    },
+    {
+      "year": 2024,
+      "month": 9,
+      "byteRange": [
+        821655060,
+        822179231
+      ],
+      "sha256": "a2e031aa220dfe0c55b4a978a08bab7b3dc167335a975eaf9501052c4bbb55a7"
+    },
+    {
+      "year": 2024,
+      "month": 10,
+      "byteRange": [
+        822699072,
+        823223243
+      ],
+      "sha256": "13460481d82ce0928104b151debcac1bafc08a89cddd537ae84cfe023ee16817"
+    },
+    {
+      "year": 2024,
+      "month": 11,
+      "byteRange": [
+        823743084,
+        824267255
+      ],
+      "sha256": "b151eb3790e20a3be93dd874de0a7155a82ed52806ae750a7b5ad7da967504a3"
+    },
+    {
+      "year": 2024,
+      "month": 12,
+      "byteRange": [
+        824787096,
+        825311267
+      ],
+      "sha256": "8c5cead83abf874bec4e23f6b61822392d1a317bf6c04c6c6ee1c57377894872"
+    },
+    {
+      "year": 2025,
+      "month": 1,
+      "byteRange": [
+        825831108,
+        826355279
+      ],
+      "sha256": "0b274e3c9ef2219754d86a360ec5bd7ea6135eabc623f8b8a54dd42e230070f3"
+    },
+    {
+      "year": 2025,
+      "month": 2,
+      "byteRange": [
+        826875120,
+        827399291
+      ],
+      "sha256": "72b30f9e4381871a2509ce683769573e968b2b2a64acaae276c9f072c5c431f0"
+    },
+    {
+      "year": 2025,
+      "month": 3,
+      "byteRange": [
+        827919132,
+        828443303
+      ],
+      "sha256": "79c6309365d0372e8445e087d59cb4aea930c2605158405704fe328038edeb44"
+    },
+    {
+      "year": 2025,
+      "month": 4,
+      "byteRange": [
+        828963144,
+        829487315
+      ],
+      "sha256": "33d84667ffc62649ba215ecf517335818b93690a6b46aea4e96ffaa40240fd83"
+    },
+    {
+      "year": 2025,
+      "month": 5,
+      "byteRange": [
+        830007156,
+        830531327
+      ],
+      "sha256": "70e5d33763f633d16d09548fa5ceb796f4c4558ed9f8c515addd0190f85e82fa"
+    },
+    {
+      "year": 2025,
+      "month": 6,
+      "byteRange": [
+        831051168,
+        831575339
+      ],
+      "sha256": "9c2001e5a86ab3dbdf59b03e30ea0884445c1cfd9c9b1fe148403ac73e5dca3a"
+    },
+    {
+      "year": 2025,
+      "month": 7,
+      "byteRange": [
+        832095180,
+        832619351
+      ],
+      "sha256": "57e48edc6f2495d64f96df9b39a481b443afe85197e20d7c3422f57955e56bb9"
+    },
+    {
+      "year": 2025,
+      "month": 8,
+      "byteRange": [
+        833139192,
+        833663363
+      ],
+      "sha256": "e119f73c3e798d82045d515de8a3304ed00ae956735b68d0094f42550ac8d502"
+    },
+    {
+      "year": 2025,
+      "month": 9,
+      "byteRange": [
+        834183204,
+        834707375
+      ],
+      "sha256": "f76447b3ec4e1d193df83435e1b88f36a35a36cfbea28935ee3471f2a9602113"
+    },
+    {
+      "year": 2025,
+      "month": 10,
+      "byteRange": [
+        835227216,
+        835751387
+      ],
+      "sha256": "ebbffd074d4b7de05c7a52d6963791a3d8d03248a1372069dbf4f478f4bd3a5b"
+    },
+    {
+      "year": 2025,
+      "month": 11,
+      "byteRange": [
+        836271228,
+        836795399
+      ],
+      "sha256": "7836aa91478c053a542b5c8e57f3a67d785eb998a93ec01fb2f328ce839cc2a4"
+    },
+    {
+      "year": 2025,
+      "month": 12,
+      "byteRange": [
+        837315240,
+        837839411
+      ],
+      "sha256": "23988e2dc28065ddc371e936c4375c9f773ab51a9508cc39f76e28aa46389c07"
+    }
+  ]
+}

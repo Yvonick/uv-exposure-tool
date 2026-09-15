@@ -1,9 +1,12 @@
+import { seasonalOzone } from './ozone.ts';
+import { temisUv, earthSunFactor } from './temis.ts';
+
 export type SolarLocation = { latitude: number; longitude: number; elevation: number; timezone: string };
 export type Interval = [number, number];
 export type DailyModel = {
   maxUv: number; solarNoon: number; protectionWindows: Interval[]; lowWindows: Interval[];
   daylightSolarElevation: { min: number; max: number } | null;
-  uvCurve: { offset: number; amplitude: number; scale: number };
+  uvCurve: { offset: number; amplitude: number; scale: number; ozoneDU: number };
 };
 export type AnnualPoint = DailyModel & {
   day: number; date: string; base: number; protection: number; secondBase: number; secondProtection: number;
@@ -13,7 +16,7 @@ export type AnnualPoint = DailyModel & {
 const radians = Math.PI / 180;
 export const wrapLongitude = (value: number) => ((value + 180) % 360 + 360) % 360 - 180;
 export const daysInYear = (year: number) => (Date.UTC(year + 1, 0, 1) - Date.UTC(year, 0, 1)) / 86_400_000;
-export const altitudeFactor = (elevation: number) => 1 + 0.1 * elevation / 1000;
+export const altitudeFactor = (elevation: number) => 1 + 0.05 * elevation / 1000;
 
 // NOAA fractional-year solar equations; longitude is positive east.
 // https://gml.noaa.gov/grad/solcalc/solareqns.PDF
@@ -84,7 +87,9 @@ export function solarElevationAtInstant(location: Pick<SolarLocation, 'latitude'
 }
 
 export function uvAtInstant(location: SolarLocation, date: Date) {
-  return 12.5 * altitudeFactor(location.elevation) * Math.max(0, solarCosine(location, date)) ** 2.42;
+  const { date: localDate } = localCalendarTime(date, location.timezone);
+  const ozoneDU = seasonalOzone(location.latitude, location.longitude, localDate);
+  return temisUv(solarCosine(location, date), ozoneDU) * altitudeFactor(location.elevation) * earthSunFactor(localDate);
 }
 
 // date encodes the selected local calendar day at UTC noon. Times are local civil hours.
@@ -93,10 +98,11 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
   const phi = location.latitude * radians;
   const a = Math.sin(phi) * Math.sin(declination);
   const b = Math.cos(phi) * Math.cos(declination);
-  const scale = 12.5 * altitudeFactor(location.elevation);
-  const uvCurve = { offset: a, amplitude: b, scale };
-  const maxUv = scale * Math.max(0, a + b) ** 2.42;
-  const minUv = scale * Math.max(0, a - b) ** 2.42;
+  const scale = altitudeFactor(location.elevation) * earthSunFactor(date);
+  const ozoneDU = seasonalOzone(location.latitude, location.longitude, date);
+  const uvCurve = { offset: a, amplitude: b, scale, ozoneDU };
+  const maxUv = scale * temisUv(a + b, ozoneDU);
+  const minUv = scale * temisUv(a - b, ozoneDU);
   const daylightSolarElevation = a + b <= 1e-12 ? null : {
     min: Math.asin(Math.max(0, Math.min(1, a - b))) / radians,
     max: Math.asin(Math.max(0, Math.min(1, a + b))) / radians,
@@ -104,7 +110,14 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
   const solarNoon = ((720 - 4 * location.longitude - equationOfTime + timezoneOffsetMinutes(date, location.timezone)) / 60 % 24 + 24) % 24;
   if (maxUv < 3) return { maxUv, solarNoon, uvCurve, daylightSolarElevation, protectionWindows: [], lowWindows: [[0, 24]] };
   if (minUv >= 3 || Math.abs(b) < 1e-12) return { maxUv, solarNoon, uvCurve, daylightSolarElevation, protectionWindows: [[0, 24]], lowWindows: [] };
-  const cosine = Math.max(-1, Math.min(1, ((3 / scale) ** (1 / 2.42) - a) / b));
+  // TEMIS is monotonic over daylight. Solve the UVI 3 solar cosine once per
+  // day, then derive crossings analytically so the heatmap and outline agree.
+  let lower = 0, upper = 1;
+  for (let i = 0; i < 48; i++) {
+    const middle = (lower + upper) / 2;
+    if (scale * temisUv(middle, ozoneDU) < 3) lower = middle; else upper = middle;
+  }
+  const cosine = Math.max(-1, Math.min(1, ((lower + upper) / 2 - a) / b));
   const halfWidth = Math.acos(cosine) * 12 / Math.PI;
   const protectionWindows: Interval[] = [];
   for (const shift of [-24, 0, 24]) {
@@ -125,8 +138,8 @@ export function dailyModel(location: SolarLocation, date: Date): DailyModel {
 
 // Reuse the daily model so heatmap samples and the UVI 3 boundary agree exactly.
 export function uvAtLocalHour(model: DailyModel, hour: number) {
-  const { offset, amplitude, scale } = model.uvCurve;
-  return scale * Math.max(0, offset + amplitude * Math.cos((hour - model.solarNoon) * Math.PI / 12)) ** 2.42;
+  const { offset, amplitude, scale, ozoneDU } = model.uvCurve;
+  return scale * temisUv(offset + amplitude * Math.cos((hour - model.solarNoon) * Math.PI / 12), ozoneDU);
 }
 
 export function buildAnnualData(location: SolarLocation, year: number, locale = 'en'): AnnualPoint[] {

@@ -13,7 +13,7 @@ export default function SkinPhotoCard({ type, response }: { type: string; respon
   const tileWidth = portraitLineup.width / portraitLineup.columns;
   const tileHeight = portraitLineup.height / portraitLineup.rows;
   return <Popover>
-    <PopoverTrigger openOnHover delay={180} closeDelay={200} className="skin-type-trigger" aria-label={t('Type {type}: view skin photo examples', { type })}>
+    <PopoverTrigger openOnHover delay={180} closeDelay={200} className="skin-type-trigger" aria-label={t('Type {type}: view illustrative portraits', { type })}>
       <strong>{t('Type')} {type}</strong><small>{t(response)}</small>
     </PopoverTrigger>
     <PopoverContent className="skin-photo-card" side="bottom" align="start" sideOffset={16} initialFocus={(interaction) => interaction === 'keyboard'}>

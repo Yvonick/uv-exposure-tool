@@ -14,7 +14,8 @@ test('sun angle is zero at the horizon and 90 overhead, and distinguishes night'
   assert.equal(solarElevationAtInstant({ latitude: -sun.latitude, longitude: sun.longitude + 180 }, instant), null);
   const place = { ...ground, latitude: 45, longitude: sun.longitude, elevation: 2000 };
   const angle = solarElevationAtInstant(place, instant);
-  close(uvAtInstant(place, instant), 15 * Math.sin(angle * Math.PI / 180) ** 2.42);
+  assert.ok(angle > 44 && angle < 46);
+  close(uvAtInstant(place, instant) / uvAtInstant({ ...place, elevation: 0 }, instant), 1.1);
   close(solarElevationAtInstant(place, instant), solarElevationAtInstant({ ...place, elevation: 0 }, instant));
 });
 

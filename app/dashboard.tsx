@@ -641,15 +641,17 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
         <div className="chart-panel">
           <AnnualHeatmap key={`${location.latitude},${location.longitude},${location.elevation},${location.timezone},${year}`} points={annualData} today={calendarDate.dayIndex} year={year} />
           <div className="chart-caption">
-            <p>{t('Theoretical UV · clear sky')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} </p>
+            <p>{t('Theoretical UV · clear sky · typical seasonal ozone')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} </p>
             <p>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</p>
           </div>
         </div>
         <details className="evidence" id="annual-model"><summary>{t("Sources and model")}</summary><div className="evidence-content">
-          <p className="fact-note">{t(modelNotes.annual)} <a href="https://pubmed.ncbi.nlm.nih.gov/18028230/" target="_blank" rel="noreferrer">Madronich ↗</a></p>
+          <p className="fact-note">{t(modelNotes.annual)} <a href="https://www.temis.nl/uvradiation/product/uvi-uvd.html" target="_blank" rel="noreferrer">KNMI / TEMIS ↗</a> · <a href="https://doi.org/10.1017/S1350482703001130" target="_blank" rel="noreferrer">Allaart et al. (2004) ↗</a></p>
+          <p className="fact-note">{t(modelNotes.ozone)} <a href="https://doi.org/10.21944/temis-ozone-msr2" target="_blank" rel="noreferrer">KNMI MSR2 ↗</a> · <a href="https://doi.org/10.5194/amt-8-3021-2015" target="_blank" rel="noreferrer">Van der A et al. (2015) ↗</a> · <a href="/data/ozone-provenance.json" target="_blank" rel="noreferrer">{t('Data preparation')}</a></p>
+          <p className="fact-note">{t(modelNotes.modelLimits)}</p>
           <p className="fact-note">{t(modelNotes.annualAngles)} <a href="https://gml.noaa.gov/grad/solcalc/solareqns.PDF" target="_blank" rel="noreferrer">NOAA ↗</a></p>
           <p className="fact-note">{t(modelNotes.heatmap)}</p>
-          <p className="fact-note">{t(modelNotes.elevation)} <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo ↗</a> · <a href="https://www.who.int/news-room/questions-and-answers/item/radiation-ultraviolet-%28uv%29" target="_blank" rel="noreferrer">WHO ↗</a></p>
+          <p className="fact-note">{t(modelNotes.elevation)} <a href="https://www.temis.nl/uvradiation/product/height.html" target="_blank" rel="noreferrer">TEMIS ↗</a> · <a href="https://open-meteo.com/en/docs/elevation-api" target="_blank" rel="noreferrer">Copernicus / Open-Meteo ↗</a></p>
         </div></details>
       </section>
 

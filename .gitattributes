@@ -1,0 +1,2 @@
+/lib/data/*.json text eol=lf
+/public/data/ozone-provenance.json text eol=lf
