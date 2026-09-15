@@ -3,7 +3,7 @@
 // Each pair varies the fictional background; the UI does not label anyone's ethnicity.
 export const phototypeSource = 'https://dermnetnz.org/topics/skin-phototype';
 export const portraitLineup = {
-  src: '/photos/skin-types/ai-portrait-lineup-v2.png',
+  src: '/photos/skin-types/ai-portrait-lineup-v2.webp',
   width: 1882,
   height: 836,
   columns: 6,

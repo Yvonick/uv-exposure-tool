@@ -30,6 +30,8 @@ import { locationPreferenceCookie, type LocationPreference } from '@/lib/locatio
 import { ChartHoverSurface, FloatingChartTooltip } from './chart-hover';
 import { LanguageSwitcher, useLanguage } from './language';
 import { defaultLocations } from '@/lib/languages';
+import { displayedUv, uvBand, liveSampleStatus } from '@/lib/live-status';
+import { locationErrorMessage } from '@/lib/ui-errors';
 import { daylightChartRange, daylightChartTicks } from '@/lib/daylight-chart';
 import { buildAnnualData, formatHour, allDayLowSeason } from '@/lib/solar';
 import { formatLocationLabel, lookupLocations, lookupLocation, resolveGlobeLocation, type Location } from '@/lib/locations';
@@ -92,14 +94,6 @@ const todayChartStyle = {
   forecastMeanUv: { label: 'Forecast hourly mean', color: '#c4c4c4' },
   peakUv: { label: 'Highest sampled UV', color: '#226047' },
 } satisfies ChartConfig;
-
-function uvBand(uv: number) {
-  if (uv < 3) return { label: 'Low', tone: 'low' };
-  if (uv < 6) return { label: 'Moderate', tone: 'moderate' };
-  if (uv < 8) return { label: 'High', tone: 'high' };
-  if (uv < 11) return { label: 'Very high', tone: 'very-high' };
-  return { label: 'Extreme', tone: 'extreme' };
-}
 
 function formatLocalTime(timezone: string) {
   try {
@@ -313,8 +307,8 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
       if (showLoader) {
         setLoadingUv(true);
         setCurrent(null);
+        setLiveError('');
       }
-      setLiveError('');
       try {
         const params = new URLSearchParams({
           latitude: String(location.latitude),
@@ -322,7 +316,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           current: 'uv_index,uv_index_clear_sky',
           hourly: 'uv_index',
           forecast_days: '2',
-          timezone: 'auto',
+          timezone: location.timezone,
           domains: 'cams_global',
         });
         const daylightParams = new URLSearchParams({
@@ -331,7 +325,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           current: 'is_day',
           daily: 'sunrise,sunset',
           forecast_days: '2',
-          timezone: 'auto',
+          timezone: location.timezone,
         });
         const [response, daylight] = await Promise.all([
           fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?${params}`, {
@@ -350,7 +344,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
         ]);
         if (!response.ok) throw new Error('UV service unavailable');
         const data = (await response.json()) as LiveUvResponse;
-        if (!data.current || !Number.isFinite(data.current.uv_index) || !Array.isArray(data.hourly?.time) || !Array.isArray(data.hourly?.uv_index)) {
+        if (!data.current || !Number.isFinite(data.current.uv_index) || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(data.current.time) || !Array.isArray(data.hourly?.time) || !Array.isArray(data.hourly?.uv_index)) {
           throw new Error('UV service returned incomplete data');
         }
         const currentTime = data.current.time;
@@ -362,6 +356,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           data.current.uv_index,
         );
         if (controller.signal.aborted) return;
+        setLiveError('');
         setCurrent({
           time: currentTime,
           uv: data.current.uv_index,
@@ -478,7 +473,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
       chooseLocation(nextLocation);
       return nextLocation;
     } catch (failure) {
-      if (request === locationRequest.current && (failure as Error).name !== 'AbortError') setError((failure as Error).message);
+      if (request === locationRequest.current && (failure as Error).name !== 'AbortError') setError(locationErrorMessage(failure));
       throw failure;
     } finally {
       if (request === locationRequest.current) setLoadingLocation(false);
@@ -495,6 +490,8 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
   const currentBand = current?.isDay === false
     ? { label: 'Night', tone: 'night' }
     : uvBand(current?.uv ?? 0);
+  const freshness = current ? liveSampleStatus(current.time, location.timezone, new Date(), Boolean(liveError)) : null;
+  const sampleDate = current ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(`${current.time.slice(0, 10)}T12:00:00Z`)) : '';
   const todayScale = dailyUvScale(current?.day ?? []);
   const currentHour = current ? decimalHour(current.time) : 0;
   const todayRange: [number, number] = current?.dayRange ?? [0, 24];
@@ -568,7 +565,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           <p className="coordinate-hint">{t("Or enter latitude, longitude · e.g. 52.52, 13.41")}</p>
           <div className="location-meta">
             <p className="location-result">
-              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {number(Math.abs(location.latitude), 1)}°{location.latitude < 0 ? 'S' : 'N'} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${Math.round(location.elevation)} ${t('m')}`} </p>
+              <Check aria-hidden="true" /> {formatLocationLabel(location)} · {number(Math.abs(location.latitude), 1)}°{location.latitude < 0 ? 'S' : 'N'} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m')}`} </p>
             <p className="location-clock"><span>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</span><time>{localTime}</time></p>
           </div>
         </form>
@@ -576,18 +573,19 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
         </div>
         <section className="live-compact" aria-label={t("Live UV conditions")}>
           <div className={`live-reading uv-${currentBand.tone}`}>
-            <p className="orb-kicker">{t("UV now")}</p>
-            {loadingUv ? <LoaderCircle className="spin live-loader" aria-label={t("Loading current UV")} /> : <p className="uv-number">{current ? number(current.uv, 1) : '—'}</p>}
+            <p className="orb-kicker">{t(freshness?.stale ? 'Last UV estimate' : 'UV now')}</p>
+            {loadingUv ? <LoaderCircle className="spin live-loader" aria-label={t("Loading current UV")} /> : <p className="uv-number">{current ? number(displayedUv(current.uv), 1) : '—'}</p>}
             <p className="uv-band">{t(current ? currentBand.label : 'Unavailable')}</p>
-            <p className="updated">{current?.time.slice(11, 16) ?? '—'} {t("· estimate")}</p>
+            <p className="updated">{current ? `${sampleDate} · ${current.time.slice(11, 16)}` : '—'} {location.timezoneFallback ? 'UTC' : ''} {t("· estimate")}</p>
+            {freshness?.stale && <p className="live-stale" role="status">{t('Out of date')}</p>}
           </div>
           <div className="live-timeline">
             <div className="day-chart-header">
-              <p>{t("Today")}</p>
+              <p>{freshness?.sameDay === false ? sampleDate : t("Today")}{location.timezoneFallback ? ' · UTC' : ''}</p>
               <div className="day-legend"><span><i className="past-line" /> {t("Past")}</span><span><i className="forecast-line" /> {t("Forecast")}</span><span><i className="peak-dot" /> {t("Highest sample")}</span></div>
             </div>
             {current?.day.length ? (
-              <ChartHoverSurface>
+              <ChartHoverSurface key={`${location.latitude},${location.longitude},${current.time}`}>
               <ChartContainer config={todayChartConfig} className="day-chart" initialDimension={{ width: 440, height: 135 }}>
                 <ComposedChart data={todayPoints} margin={{ top: 12, right: 8, bottom: 0, left: -28 }}>
                   <CartesianGrid vertical={false} stroke="#dedede" strokeDasharray="2 5" />
@@ -605,7 +603,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
                     tickMargin={10}
                   />
                   <YAxis domain={[0, todayScale.upper]} ticks={todayScale.ticks} axisLine={false} tickLine={false} minTickGap={12} />
-                  {currentHour >= todayRange[0] && currentHour <= todayRange[1] && <ReferenceLine
+                  {!freshness?.stale && currentHour >= todayRange[0] && currentHour <= todayRange[1] && <ReferenceLine
                     x={currentHour}
                     stroke="#226047"
                     strokeDasharray="3 4"
@@ -626,7 +624,8 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           </div>
         </section>
       </header>
-      {(error || liveError) && <div className="error-banner" role="alert"><Info aria-hidden="true" />{t(error || liveError)}</div>}
+      {error && <div className="error-banner" role="alert"><Info aria-hidden="true" />{t(error)}</div>}
+      {liveError && <div className="error-banner" role="alert"><Info aria-hidden="true" />{t(liveError)}</div>}
 
       <section className="year-section" aria-labelledby="year-title">
         <div className="year-heading">
@@ -635,14 +634,14 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           </div>
           <div className="year-stats">
             <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(peakPoint.maxUv, 1)}</strong><small>{peakPoint.date} · {year}</small></div>
-            <div className="peak-stat window-stat"><span>{t("Low UV all day")}</span><strong>{t(lowSeason === 'Low UV all year' ? 'All year' : lowSeason === 'No all-day low-UV season' ? 'No period this year' : lowSeason)}</strong><small>{t('Theoretical UVI stays below 3')} · {year}</small></div>
+            <div className="peak-stat window-stat"><span>{t("Low UV all day")}</span><strong>{t(lowSeason === 'Low UV all year' ? 'All year' : lowSeason === 'No all-day low-UV season' ? 'No period this year' : lowSeason)}</strong><small>{t(lowSeason === 'No all-day low-UV season' ? 'Theoretical UVI reaches at least 3 every day' : 'Theoretical UVI stays below 3')} · {year}</small></div>
           </div>
         </div>
 
         <div className="chart-panel">
-          <AnnualHeatmap points={annualData} today={calendarDate.dayIndex} year={year} />
+          <AnnualHeatmap key={`${location.latitude},${location.longitude},${location.elevation},${location.timezone},${year}`} points={annualData} today={calendarDate.dayIndex} year={year} />
           <div className="chart-caption">
-            <p>{t('Theoretical daily windows · clear sky')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} </p>
+            <p>{t('Theoretical UV · clear sky')} · {location.selectionMode === 'pin' ? t('0 m assumed elevation') : `${number(location.elevation)} ${t('m.')}`} </p>
             <p>{t(location.timezoneFallback ? 'UTC' : 'Local time')}</p>
           </div>
         </div>
@@ -662,6 +661,7 @@ export default function Dashboard({ initialPreference }: { initialPreference?: L
           <h2>{t("Method and sources")}</h2>
           <p>{t(modelNotes.sourceChoice)}</p>
           <p>{t(modelNotes.sourceComparison)}</p>
+          <p className="sources-reviewed">{t('Sources reviewed: {date}', { date: new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date('2026-09-15T12:00:00Z')) })}</p>
         </div>
       </section>
 

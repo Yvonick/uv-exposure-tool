@@ -9,8 +9,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const language = resolveLanguage((await params).language);
   if (!language) notFound();
   const t = translator(language);
-  const title = t('UV Exposure — yearly UV windows by location');
-  const description = t('Live UV conditions, today’s UV timeline, and yearly low-UV windows for any location.');
+  const title = t('UV Exposure — annual UV heatmap by location');
+  const description = t('Explore UV through the year, sunlight on the globe, and current UV conditions for any location.');
   return {
     metadataBase: new URL('https://uv-exposure-tool.yvonichou.chatgpt.site'),
     title, description,

@@ -7,6 +7,8 @@ import { dailyModel, daysInYear, formatHour, solarElevationAtInstant, localCalen
 import { project, unproject, visibleLine, nightPath, type GeoPoint } from '@/lib/globe';
 import { useLanguage } from './language';
 import { modelNotes } from '@/lib/translations';
+import { useExploration } from './exploration';
+import { locationErrorMessage } from '@/lib/ui-errors';
 
 type Land = { features: Array<{ geometry: { type: string; coordinates: number[][][] | number[][][][] } }> };
 const CENTER = 300, RADIUS = 180;
@@ -16,10 +18,14 @@ export default function SolarGlobe({ location, year, onPick }: {
   location: Location; year: number; onPick: (latitude: number, longitude: number) => Promise<Location>;
 }) {
   const { locale, t, number, lowWindow } = useLanguage();
-  const [selection, setSelection] = useState(() => ({
+  const { exploration, setExploration } = useExploration();
+  const [selection, setSelection] = useState<{ day: number; minutes: number }>(() => exploration.globe?.year === year ? exploration.globe : ({
     day: Math.floor((localCalendarTime(new Date(), location.timezone).date.getTime() - Date.UTC(year, 0, 1)) / 86_400_000),
     minutes: 720,
   }));
+  useEffect(() => {
+    setExploration(previous => ({ ...previous, globe: { ...selection, year } }));
+  }, [selection, year, setExploration]);
   const [view, setView] = useState<GeoPoint>({ latitude: 20, longitude: location.longitude });
   const [lines, setLines] = useState<GeoPoint[][]>([]);
   const [mapError, setMapError] = useState(false);
@@ -83,7 +89,7 @@ export default function SolarGlobe({ location, year, onPick }: {
     const sequence = ++pickSequence.current;
     setPendingPoint(point); setPicking(true); setPickError('');
     try { await onPick(Number(point.latitude.toFixed(4)), Number(point.longitude.toFixed(4))); }
-    catch (error) { if (sequence === pickSequence.current && (error as Error).name !== 'AbortError') setPickError((error as Error).message); }
+    catch (error) { if (sequence === pickSequence.current && (error as Error).name !== 'AbortError') setPickError(locationErrorMessage(error)); }
     finally { if (sequence === pickSequence.current) { setPicking(false); setPendingPoint(null); } }
   }
 
@@ -145,8 +151,8 @@ export default function SolarGlobe({ location, year, onPick }: {
             {picking && <p className="fact-note globe-status">{t("Resolving the selected location…")}</p>}
             {pickError && <p className="globe-error" role="alert">{t(pickError)}</p>}
             <div className="peak-stat"><span>{t("Theoretical UV at the chosen time")}</span><strong>{number(currentUv, 1)}</strong></div>
-            <div className={`peak-stat solar-angle-stat${solarElevation === null ? ' nighttime-stat' : ''}`}><span>{t("Sun angle")}</span><strong>{solarElevation === null ? t('Sun below the horizon') : `${number(solarElevation, 1)}°`}</strong><small>{t("0° at the horizon · 90° overhead")}</small></div>
-            <div className="peak-stat"><span>{t("Theoretical UV peak")}</span><strong>{number(result.maxUv, 1)}</strong><small>{t("Chosen date")}</small></div>
+            <div className={`peak-stat solar-angle-stat${solarElevation === null ? ' nighttime-stat' : ''}`}><span>{t("Solar elevation angle")}</span><strong>{solarElevation === null ? t('Sun below the horizon') : `${number(solarElevation, 1)}°`}</strong><small>{t("0° at the horizon · 90° overhead")}</small></div>
+            <div className="peak-stat"><span>{t("Theoretical UV peak at the chosen date")}</span><strong>{number(result.maxUv, 1)}</strong></div>
             <div className="peak-stat window-stat"><span>{t("Low-UV window on the chosen date")}</span><strong>{lowWindow(result.lowWindows)}</strong><small>{t(location.timezoneFallback ? 'UVI below 3 · UTC' : 'UVI below 3 · local time')}</small></div>
           </div>
         </div>

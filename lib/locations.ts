@@ -10,7 +10,11 @@ export const DEFAULT_LOCATION: Location = {
 export const formatLocationLabel = (location: Location) => [location.name, location.admin1 && location.admin1 !== location.name ? location.admin1 : null, location.country].filter(Boolean).join(', ');
 
 export function parseCoordinates(query: string): { latitude: number; longitude: number } | null {
-  const match = query.trim().match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[,;\s]\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/);
+  // Decimal commas require an unambiguous semicolon or whitespace separator.
+  const localized = query.trim().match(/^([+-]?\d+(?:[.,]\d+)?)\s*;\s*([+-]?\d+(?:[.,]\d+)?)$/)
+    ?? query.trim().match(/^([+-]?\d+,\d+)\s+([+-]?\d+(?:[.,]\d+)?)$/);
+  const normalized = localized ? `${localized[1].replace(',', '.')};${localized[2].replace(',', '.')}` : query.trim();
+  const match = normalized.match(/^([+-]?(?:\d+(?:\.\d*)?|\.\d+))\s*[,;\s]\s*([+-]?(?:\d+(?:\.\d*)?|\.\d+))$/);
   if (!match) return null;
   const latitude = Number(match[1]), longitude = Number(match[2]);
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) {
@@ -42,13 +46,49 @@ export async function resolveCoordinates(latitude: number, longitude: number, si
   return location;
 }
 
+const countryNames = new Map<string, Map<string, string>>();
+export function splitPlaceQuery(query: string, language = 'en'): { name: string; countryCode?: string } {
+  let names = countryNames.get(language);
+  if (!names) {
+    names = new Map();
+  for (const locale of new Set(['en', language])) {
+    const regions = new Intl.DisplayNames([locale], { type: 'region', fallback: 'none' });
+    for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) {
+      const code = String.fromCharCode(a, b), name = regions.of(code);
+      if (new Intl.Locale(`und-${code}`).maximize().region !== code) continue;
+      if (name && name !== code) names.set(name.toLocaleLowerCase(locale), code);
+    }
+  }
+    for (const [alias, code] of Object.entries({ uk: 'GB', 'u.k.': 'GB', usa: 'US', 'u.s.a.': 'US', 'u.s.': 'US' })) names.set(alias, code);
+    countryNames.set(language, names);
+  }
+  const text = query.trim();
+  for (const [name, code] of [...names].sort((a, b) => b[0].length - a[0].length)) {
+    const lower = text.toLocaleLowerCase(language);
+    // Leave state abbreviations such as CA to the geocoder's native parser.
+    for (const separator of [', ', ',',' ']) {
+      const suffix = separator + name;
+      if (lower.endsWith(suffix) && text.length > suffix.length) return { name: text.slice(0, -suffix.length).trim(), countryCode: code };
+    }
+  }
+  return { name: text };
+}
+
 export async function lookupLocations(query: string, count = 6, signal?: AbortSignal, language = 'en'): Promise<Location[]> {
   const coordinates = parseCoordinates(query);
   if (coordinates) return [await resolveCoordinates(coordinates.latitude, coordinates.longitude, signal)];
-  const params = new URLSearchParams({ name: query, count: String(count), language, format: 'json' });
-  const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal });
-  if (!response.ok) throw new Error('Location search is temporarily unavailable. Please try again.');
-  const data = await response.json() as { results?: Location[] };
+  async function search(name: string, countryCode?: string) {
+    const params = new URLSearchParams({ name, count: String(count), language, format: 'json' });
+    if (countryCode) params.set('countryCode', countryCode);
+    const response = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params}`, { signal });
+    if (!response.ok) throw new Error('Location search is temporarily unavailable. Please try again.');
+    return response.json() as Promise<{ results?: Location[] }>;
+  }
+  let data = await search(query);
+  if (!data.results?.length) {
+    const placeQuery = splitPlaceQuery(query, language);
+    if (placeQuery.countryCode) data = await search(placeQuery.name, placeQuery.countryCode);
+  }
   return (data.results ?? []).filter((r) => validMetadata(r.timezone, r.elevation) && Number.isFinite(r.latitude) && Number.isFinite(r.longitude) && Math.abs(r.latitude) <= 90 && Math.abs(r.longitude) <= 180).map((r) => ({
     name: r.name, country: r.country ?? '', admin1: r.admin1, latitude: r.latitude, longitude: r.longitude, timezone: r.timezone, elevation: r.elevation,
   }));
@@ -62,6 +102,7 @@ export async function lookupLocation(query: string, signal?: AbortSignal, langua
 
 export type NamedPlace = [name: string, countryCode: string, latitude: number, longitude: number];
 let placeIndex: NamedPlace[] | undefined;
+let placeIndexRequest: Promise<NamedPlace[]> | undefined;
 
 export function nearestPlace(places: NamedPlace[], latitude: number, longitude: number) {
   if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) throw new Error('Invalid coordinates.');
@@ -99,17 +140,21 @@ async function resolveGlobePin(latitude: number, longitude: number, signal?: Abo
 export async function resolveGlobeLocation(latitude: number, longitude: number, signal?: AbortSignal, language = 'en'): Promise<Location> {
   signal?.throwIfAborted();
   if (!placeIndex) {
-    const response = await fetch('/data/places.json', { signal });
+    placeIndexRequest ??= (async () => {
+    const response = await fetch('/data/places.json', { signal: AbortSignal.timeout(15_000), cache: 'force-cache' });
     if (!response.ok) throw new Error('Could not load place names. Please try again or use the location search.');
     const data = await response.json() as NamedPlace[];
-    signal?.throwIfAborted();
     if (!Array.isArray(data) || !data.length || data.some((place) => !Array.isArray(place)
       || typeof place[0] !== 'string' || !/^[A-Z]{2}$/.test(place[1])
       || !Number.isFinite(place[2]) || Math.abs(place[2]) > 90
       || !Number.isFinite(place[3]) || Math.abs(place[3]) > 180)) throw new Error('The place index is unavailable. Please use the location search.');
     placeIndex = data;
+    return data;
+    })().finally(() => { placeIndexRequest = undefined; });
+    await placeIndexRequest;
   }
-  const { place, distanceKm } = nearestPlace(placeIndex, latitude, longitude);
+  signal?.throwIfAborted();
+  const { place, distanceKm } = nearestPlace(placeIndex!, latitude, longitude);
   if (distanceKm > 100) return resolveGlobePin(latitude, longitude, signal);
   // Only nearby selections snap to the named place and use its actual metadata.
   const metadata = await resolveCoordinates(place[2], place[3], signal);

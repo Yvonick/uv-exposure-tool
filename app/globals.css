@@ -343,6 +343,7 @@ footer p { margin: 0; }
 .annual-chart text { font-size: 12px; }
 .chart-scroll { overflow: visible; }
 @media (max-width: 1120px) { .dashboard-header { gap: 1rem; } }
+@media (min-width: 761px) and (max-width: 920px) { .dashboard-header { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 760px) { .dashboard-header { grid-template-columns: minmax(0, 1fr); padding: 1rem 0; } .title-search .location-meta { flex-direction: row; } .annual-chart { height: 310px; } .year-section { padding: 1rem; } .year-heading { grid-template-columns: minmax(0, 1fr); gap: .75rem; } .year-section .peak-stat { display: none; } }
 @media (max-width: 400px) { .live-compact { grid-template-columns: 78px minmax(0, 1fr); gap: .5rem; padding: .75rem; } .live-reading { padding-right: .4rem; } .live-reading .uv-number { font-size: 2.8rem; } .live-timeline .day-legend { gap: .4rem; } }
 
@@ -505,6 +506,12 @@ footer p { margin: 0; }
 .chart-tooltip { font-size: .875rem; }
 .chart-hover-surface { min-width: 0; }
 .floating-chart-tooltip { position: fixed; z-index: 1000; pointer-events: none; width: max-content; max-width: min(22rem, calc(100vw - 16px)); min-width: 0; overflow: hidden; box-shadow: 0 6px 22px #0002; }
+.chart-overflow-details { position: relative; margin-top: .75rem; padding: 1rem 2.5rem 1rem 1rem; border: 1px solid var(--border); border-radius: .5rem; background: white; overflow-wrap: anywhere; }
+.chart-overflow-details > button { position: absolute; top: .25rem; right: .25rem; width: 2rem; height: 2rem; font-size: 1.25rem; cursor: pointer; }
+.chart-overflow-details .chart-tooltip-date, .chart-overflow-details .chart-tooltip-note { color: var(--muted-foreground); }
+.live-stale { margin: .35rem 0 0; font-size: .75rem; color: #8a5118; }
+.sources-reviewed { color: var(--muted-foreground); }
+.skin-image-status { font-size: .75rem; color: var(--muted-foreground); }
 .skin-type-trigger { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: .15rem; min-height: 3rem; padding: .3rem 0; border: 0; background: transparent; color: inherit; text-align: left; cursor: pointer; }
 .skin-type-trigger strong { font-size: .9375rem; font-weight: 500; text-decoration: underline dotted #89a897; text-underline-offset: .25rem; }
 .skin-type-trigger small { font-size: .75rem; color: var(--muted-foreground); }
@@ -561,4 +568,5 @@ footer p { margin: 0; }
   .heatmap-frame { margin-right: .25rem; margin-left: 3rem; }
   .heatmap-y-axis { left: -3rem; }
   .heatmap-minor-month { display: none; }
+  .heatmap-today, .coordinate-hint, .updated, .live-source, .day-legend, .location-meta { font-size: .75rem; }
 }

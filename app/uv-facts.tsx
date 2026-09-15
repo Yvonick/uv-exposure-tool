@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { type ReactNode } from 'react';
+import { useExploration } from './exploration';
 import { Slider } from '@/components/ui/slider';
 import SkinPhotoCard from './skin-photo-card';
 import { phototypeSource } from '@/lib/skin-photos';
@@ -23,7 +24,7 @@ const sources = {
 
 const surfaces = [
   { name: 'Grass / soil', low: 0, high: 10, label: '<10%*' },
-  { name: 'Water', low: 0, high: 30, label: '<10–30%*' },
+  { name: 'Water', low: 0, high: 30, label: 'upTo' },
   { name: 'Sand', low: 5, high: 25, label: '5–25%' },
   { name: 'Sea foam', low: 25, high: 25, label: '~25%' },
   { name: 'Snow', low: 40, high: 90, label: '40–90%' },
@@ -37,15 +38,17 @@ function Evidence({ summary = 'Sources and details', children }: { summary?: str
   return <details className="evidence"><summary>{t(summary)}</summary><div className="evidence-content">{children}</div></details>;
 }
 function Finding({ agency, href, children }: { agency: string; href: string; children: ReactNode }) {
-  return <div className="evidence-finding"><div><Source href={href}>{agency}</Source></div><p>{children}</p></div>;
+  const { t } = useLanguage();
+  return <div className="evidence-finding"><div><Source href={href}>{t(agency)}</Source></div><p>{children}</p></div>;
 }
 
 export default function UvFacts() {
   const { t, number } = useLanguage();
-  const [intensity, setIntensity] = useState(3);
-  const [minutes, setMinutes] = useState(15);
+  const { exploration, setExploration } = useExploration();
+  const { intensity, minutes } = exploration.dose;
+  const setIntensity = (intensity: number) => setExploration(previous => ({ ...previous, dose: { ...previous.dose, intensity } }));
+  const setMinutes = (minutes: number) => setExploration(previous => ({ ...previous, dose: { ...previous.dose, minutes } }));
   const dose = standardErythemalDose(intensity, minutes);
-  const referencePercent = Math.round(dose / DAILY_REFERENCE_SED * 100);
   const marker = Math.min(dose, 20) / 20 * 100;
 
   return (
@@ -57,9 +60,9 @@ export default function UvFacts() {
             <div><div className="slider-heading"><label id="intensity-label">{t("UV Index")}</label><output>{intensity}</output></div><Slider aria-labelledby="intensity-label" value={[intensity]} onValueChange={(value) => setIntensity(Array.isArray(value) ? value[0] : value)} min={1} max={12} step={1} /><div className="slider-endpoints"><span>1</span><span>12</span></div></div>
             <div><div className="slider-heading"><label id="duration-label">{t("Time outside (minutes)")}</label><output>{minutes} {t("min")}</output></div><Slider aria-labelledby="duration-label" value={[minutes]} onValueChange={(value) => setMinutes(Array.isArray(value) ? value[0] : value)} min={1} max={180} step={1} /><div className="slider-endpoints"><span>{t("1 min")}</span><span>{t("3 hours")}</span></div></div>
           </div>
-          <div className="dose-result" aria-live="polite"><div><strong>{number(dose, 2)}</strong><span>{t("SED")}</span></div><p>{t('{percent}% of the 1 SED daily reference', { percent: number(referencePercent) })}{dose > 20 ? ` · ${t('exposure marker beyond the graph scale')}` : ''}</p></div>
+          <div className="dose-result" aria-live="polite"><div><strong>{number(dose, 2)}</strong><span>{t("SED")}</span></div><p>{t('SED is a standard unit of accumulated UV dose.')}{dose > 20 ? ` · ${t('exposure marker beyond the graph scale')}` : ''}</p></div>
           <figure className="skin-dose-chart">
-            <figcaption className="dose-chart-legend"><span><i className="med-key" />{t("First visible sunburn range")}</span><span><i className="reference-key" />{t("Daily reference · 1 SED")}</span><span><i className="exposure-key" />{t("Selected exposure")}</span></figcaption>
+            <figcaption className="dose-chart-legend"><span><i className="med-key" />{t("Typical dose for first visible redness")}</span><span><i className="reference-key" />{t("ARPANSA reference · 1 SED")}</span><span><i className="exposure-key" />{t("Selected exposure")}</span></figcaption>
             <div className="skin-dose-scale" aria-hidden="true"><span>0</span><span>5</span><span>10</span><span>15</span><span>{t("20 SED")}</span></div>
             {skinDoseRanges.map((skin) => (
               <div className="skin-dose-row" key={skin.type}>
@@ -73,13 +76,14 @@ export default function UvFacts() {
               </div>
             ))}
           </figure>
-          <p className="fact-note">{t("1 SED is a fixed dose unit. ARPANSA’s 1 SED daily reference applies across the chart; it is not a damage-free limit or a new allowance for each outing. Sunburn thresholds vary by skin type, but validated “safe daily doses” for each type are not available.")}</p>
+          <p className="fact-note">{t('Individual responses vary. The ARPANSA reference is not a damage-free limit.')}</p>
           <Evidence>
-            <Finding agency="DermNet · Fitzpatrick" href={phototypeSource}>{t("Phototypes describe burning and tanning response. DermNet supports these descriptions; the fictional AI portraits are illustrations, not clinical examples or a calibrated colour scale.")}</Finding>
-            <Finding agency="RIVM" href={sources.rivm}>{t("Characteristic first-redness ranges, assessed about a day later (table 1); not individual predictions.")}</Finding>
-            <Finding agency="ARPANSA" href={sources.arpansa}>{t("The 1 SED daily reference is practical guidance for most people, not a universal damage-free threshold.")}</Finding>
+            <p className="fact-note">{t('SED means standard erythemal dose: UV energy weighted for its ability to cause sunburn.')}</p>
+            <Finding agency="DermNet · Fitzpatrick" href={phototypeSource}>{t("DermNet describes the Fitzpatrick phototypes by their tendency to sunburn and tan.")}</Finding>
+            <Finding agency="RIVM, 2023 · background report" href={sources.rivm}>{t("Characteristic first-redness ranges, assessed about a day later (table 1); not individual predictions.")}</Finding>
+            <Finding agency="ARPANSA · public guidance" href={sources.arpansa}>{t("ARPANSA uses 1 SED as a practical daily reference for most people. It refers to cumulative exposure over the day, not a fresh allowance for each outing. Validated safe daily doses for individual skin types are not available.")}</Finding>
             <Finding agency="Shih et al., 2018" href={sources.dna2018}>{t("DNA damage occurred at 20% of individual sunburn dose. A visible burn is not the first sign of biological damage.")}</Finding>
-            <Finding agency="Wong et al., 2018" href={sources.malaysia}>{t("Among 167 volunteers with types III–V, phototype did not reliably distinguish the measured burn thresholds.")}</Finding>
+            <Finding agency="Wong et al., 2018 · 167 participants" href={sources.malaysia}>{t("Among 167 volunteers with types III–V, phototype did not reliably distinguish the measured burn thresholds.")}</Finding>
             <p className="fact-note">{t("Dose = UVI × minutes × 0.015 SED; 1 SED = 100 erythemally weighted J/m² (")}<Source href={sources.cie}>{t("CIE")}</Source>{t("). Assumes constant ambient UV; clothing, shade and orientation affect skin dose. This calculator does not track your whole day.")}</p>
           </Evidence>
         </div>
@@ -89,13 +93,13 @@ export default function UvFacts() {
         <div className="fact-heading"><h2 id="sky-title">{t("Sky and atmosphere")}</h2></div>
         <div className="fact-content">
           <div className="sky-metrics" aria-label={t("Percentage of clear-sky UV that reaches the ground")}>
-            <div><span>{t("Thin overcast")}</span><strong>80–90%</strong></div>
-            <div><span>{t("Cloudy")}</span><strong>~60%</strong></div>
-            <div><span>{t("Rain")}</span><strong>~30%</strong></div>
+            <div><span>{t("Thin overcast")}</span><strong>{t('{value}%', { value: '80–90' })}</strong></div>
+            <div><span>{t("Overcast")}</span><strong>≈{t('{value}%', { value: number(60) })}</strong></div>
+            <div><span>{t("Rain")}</span><strong>≈{t('{value}%', { value: number(30) })}</strong></div>
           </div>
           <p className="fact-note"><strong>{t("The UV Index is linear.")}</strong> {t('+10% UV means UVI 3 → 3.3, or UVI 6 → 6.6. Each UVI unit represents the same increase in sunburn-weighted radiation.')} <Source href="https://www.cpc.ncep.noaa.gov/products/stratosphere/uv_index/uv_compute.shtml">{t("NOAA")}</Source></p>
           <Evidence>
-            <Finding agency="JMA" href={sources.jmaCloud}>{t("These percentages compare UV with clear sky: station averages for each cloud category, not corrections for today’s forecast.")}</Finding>
+            <Finding agency="JMA · station observations, 1997–2010" href={sources.jmaCloud}>{t("These percentages compare observed UV with estimated clear-sky UV. They are averages for cloud categories at four Japanese stations, not universal multipliers for today’s forecast.")}</Finding>
             <Finding agency="FOPH" href={sources.swiss}>{t("Light cloud reduces UV by only about 5–10%; its categories and conditions differ from JMA’s.")}</Finding>
             <Finding agency="EPA" href={sources.epa}>{t("Cloud edges can raise UV above clear-sky levels. Ozone and airborne particles also matter; no single cloud multiplier applies.")}</Finding>
           </Evidence>
@@ -106,8 +110,8 @@ export default function UvFacts() {
         <div className="fact-heading"><h2 id="ground-title">{t("Surfaces and reflected UV")}</h2></div>
         <div className="fact-content">
           <figure className="reflectance-chart">
-            <figcaption className="reflection-legend"><span><i />{t("UV reflected")}</span><span><i className="hatched-key" />{t("Range across published estimates")}</span></figcaption>
-            <div className="reflectance-scale" aria-hidden="true"><span>0%</span><span>50%</span><span>100%</span></div>
+            <figcaption className="reflection-legend"><span><i />{t("Incoming UV reflected by the surface")}</span><span><i className="hatched-key" />{t("Range across published estimates")}</span></figcaption>
+            <div className="reflectance-scale" aria-hidden="true">{[0,50,100].map(value => <span key={value}>{t('{value}%', { value: number(value) })}</span>)}</div>
             {surfaces.map((surface) => (
               <div className="reflectance-row" key={surface.name}>
                 <span>{t(surface.name)}</span>
@@ -115,11 +119,11 @@ export default function UvFacts() {
                   <div className="reflectance-fill" style={{ width: `${surface.high}%` }} />
                   {surface.high > surface.low && <div className="reflection-uncertainty" style={{ left: `${surface.low}%`, width: `${surface.high - surface.low}%` }} />}
                 </div>
-                <strong>{surface.label}</strong>
+                <strong>{surface.label === 'upTo' ? t('Up to {value}%*', { value: number(surface.high) }) : t('{value}%', { value: surface.label.replace('%*', '').replace('%', '').replace('~', '≈') }) + (surface.label.endsWith('*') ? '*' : '')}</strong>
               </div>
             ))}
           </figure>
-          <p className="fact-note">{t("Bars run from zero to the highest estimate; hatching shows the variable part.")}</p>
+          <p className="fact-note">{t("Bars run from zero to the highest estimate; hatching shows the variable part.")} {t('These percentages describe reflection by the surface, not a direct increase in UV Index.')}</p>
           <Evidence>
             <p className="fact-note">{t("*For “below 10%”, no minimum is given, so hatching starts at zero. Sea foam has one approximate reference value.")}</p>
             <Finding agency="JMA" href={sources.jmaGround}>{t("Extensive snowfields can increase UVI by 40–50%: UVI 3 becomes about 4.2–4.5. Surface reflectance is not itself an increase in UVI; this example is not applied to the live forecast.")}</Finding>

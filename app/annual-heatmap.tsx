@@ -52,7 +52,13 @@ export default function AnnualHeatmap({ points, today, year }: { points: AnnualP
     });
   }
   const selected = selection && points[selection.day];
-  const selectedText = selected && selection ? `${selected.date} · ${formatHour(selection.hour)} · ${t('Theoretical UVI')} ${number(uvAtLocalHour(selected, selection.hour), 1)}` : '';
+  const selectedText = selected && selection ? [
+    `${selected.date} · ${formatHour(selection.hour)} · ${t('Theoretical UVI')} ${number(uvAtLocalHour(selected, selection.hour), 1)}`,
+    `${lowWindow(selected.lowWindows)} · ${t('UVI below 3')}`,
+    `${t('Theoretical UV peak')} · ${number(selected.maxUv, 1)}`,
+    `${t('Maximum solar elevation angle')} · ${selected.daylightSolarElevation ? `${number(selected.daylightSolarElevation.max, 1)}°` : t('No daylight')}`,
+    t('0° at the horizon · 90° overhead'),
+  ].join('. ') : '';
 
   return <div className="annual-heatmap">
     <div className="heatmap-legend" aria-label={t('Chart legend')}>
@@ -68,6 +74,7 @@ export default function AnnualHeatmap({ points, today, year }: { points: AnnualP
       <div className="heatmap-frame">
         <div className="heatmap-y-axis" aria-hidden="true">{[0, 6, 12, 18, 24].map(hour => <span key={hour} style={{ top: `${(24 - hour) / 24 * 100}%` }}>{formatHour(hour)}</span>)}</div>
         <div className="heatmap-plot" role="application" tabIndex={0}
+          aria-describedby="annual-selection-summary"
           aria-label={t('Annual UV heatmap. Left and right arrows change the day; up and down change the time.')}
           onPointerMove={selectPointer} onPointerDown={selectPointer} onPointerLeave={() => setSelection(null)}
           onFocus={() => setSelection({ day: today, hour: 12 })} onBlur={() => setSelection(null)} onKeyDown={selectKey}>
@@ -80,7 +87,7 @@ export default function AnnualHeatmap({ points, today, year }: { points: AnnualP
           </svg>
           <span className={`heatmap-today ${today > points.length * 0.85 ? 'align-end' : ''}`} style={{ left: `${(today + 0.5) / points.length * 100}%` }}>{t('TODAY')}</span>
           {selection && <span className="heatmap-selection" style={{ left: `${(selection.day + 0.5) / points.length * 100}%`, top: `${(24 - selection.hour) / 24 * 100}%` }} />}
-          <span className="sr-only" role="status" aria-live="polite">{selectedText}</span>
+          <span id="annual-selection-summary" className="sr-only" role="status" aria-live="polite">{selectedText}</span>
         </div>
         <div className="heatmap-x-axis" aria-hidden="true">{months.map(({ day, label }, month) => <span key={month} className={month % 3 ? 'heatmap-minor-month' : ''} style={{ left: `${day / points.length * 100}%` }}>{label}</span>)}</div>
       </div>
@@ -89,7 +96,7 @@ export default function AnnualHeatmap({ points, today, year }: { points: AnnualP
         <p className="chart-tooltip-main">{t('Theoretical UVI')} · {number(uvAtLocalHour(selected, selection.hour), 1)}</p>
         <p className="chart-tooltip-note">{lowWindow(selected.lowWindows)} · {t('UVI below 3')}</p>
         <p className="chart-tooltip-note">{t('Theoretical UV peak')} · {number(selected.maxUv, 1)}</p>
-        <p className="chart-tooltip-note">{t('Maximum sun angle')} · {selected.daylightSolarElevation ? `${number(selected.daylightSolarElevation.max, 1)}°` : t('No daylight')}</p>
+        <p className="chart-tooltip-note">{t('Maximum solar elevation angle')} · {selected.daylightSolarElevation ? `${number(selected.daylightSolarElevation.max, 1)}°` : t('No daylight')}</p>
         <p className="chart-tooltip-note">{t('0° at the horizon · 90° overhead')}</p>
       </FloatingChartTooltip>}
     </ChartHoverSurface>
